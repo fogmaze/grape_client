@@ -7,8 +7,13 @@ import 'package:flutter/material.dart';
 
 class EnVocDef_TestingElement extends TestingElement {
   List<String>? defList;
-  EnVocDef_TestingElement({required super.time});
-  Future<void> init() async {;
+
+  EnVocDef_TestingElement({required super.dataObject});
+  @override
+  void init() {
+    initialUpdate();
+    defList = ans.split("|");
+    defList!.shuffle(Random());
   }
   @override
   String methodName = "en_voc_def";
@@ -50,7 +55,7 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
       },
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.7,
-        height: MediaQuery.of(context).size.height * 0.22,
+        height: MediaQuery.of(context).size.height * 0.55,
         child: Container(
           decoration: const BoxDecoration(),
           child: FittedBox(
@@ -58,7 +63,12 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Tap to see the definition(len:${widget.element.defList!.length})"),
+                Row(
+                  children: [
+                    const Text("Tap to see the definition"),
+                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold))
+                  ],
+                ),
                 const SizedBox(height: 10),
                 Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
@@ -77,9 +87,12 @@ class EnVocSpe_TestingElement extends TestingElement {
   @override
   String methodName = "en_voc_spe";
   List<String>? defList;
-  EnVocSpe_TestingElement({required super.time});
+  EnVocSpe_TestingElement({required super.dataObject});
   @override
-  Future<void> init() async {
+  void init() {
+    initialUpdate();
+    defList = ans.split("|");
+    defList!.shuffle(Random());
   }
   int showNum = 1;
   double left = 0;
@@ -130,7 +143,12 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Spell it! click to see other definitions (len:${widget.element.defList!.length})"),
+                Row(
+                  children: [
+                    const Text("Spell it! click to see other definitions"),
+                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold))
+                  ],
+                ),
                 Text(widget.element.defList!.sublist(0, widget.element.showNum).join("/"), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
@@ -149,21 +167,17 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
                   alignment: Alignment.centerLeft,
                   children: [
                     Positioned(
-                      left: widget.element.left,
-                      child: Container(
-                        width: MediaQuery.of(context).size.width * 0.7,
-                        height: MediaQuery.of(context).size.height * 0.2,
-                        decoration: const BoxDecoration(color: Colors.black),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        ),
+                      child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     Positioned(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      left: widget.element.left,
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.7,
+                        height: MediaQuery.of(context).size.height * 0.55,
+                        decoration: const BoxDecoration(color: Colors.black),
                       ),
                     ),
                   ]
@@ -179,7 +193,12 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
 class EnPrepDef_TestingElement extends TestingElement {
   @override
   String methodName = "en_prep_def";
-  EnPrepDef_TestingElement({required super.time});
+  EnPrepDef_TestingElement({required super.dataObject});
+
+  @override
+  void init() {
+
+  }
 
   @override
   Widget getWidget() {
@@ -212,9 +231,14 @@ class EnPrepDef_TestingElementWidgetState extends State<EnPrepDef_TestingElement
 }
 
 class EnPrepSpe_TestingElement extends TestingElement {
-  EnPrepSpe_TestingElement({required super.time});
+  EnPrepSpe_TestingElement({required super.dataObject});
   @override
   String methodName = "en_prep_spe";
+
+  @override
+  void init() {
+
+  }
 
   @override
   Widget getWidget() {
@@ -248,10 +272,12 @@ class EnPrepSpe_TestingElementWidgetState extends State<EnPrepSpe_TestingElement
 
 class Notes_TestingElement extends TestingElement {
   TestingElement? actualElement;
-  Notes_TestingElement({required super.time});
+  Notes_TestingElement({required super.dataObject});
   @override
-  Future<void> init() async {
-
+  void init() {
+    actualElement = getTestingElementFromObject(dataObject["actual"]);
+    time = dataObject["time"];
+    tags = actualElement!.tags;
   }
 
   @override
@@ -270,5 +296,48 @@ class Notes_TestingElement extends TestingElement {
   @override
   void expandAll() {
     actualElement!.expandAll();
+  }
+}
+class DefaultTestingElement extends TestingElement {
+  @override
+  String methodName = "Default";
+  var idx = 0;
+  DefaultTestingElement({this.idx = 0, bool isMain=true, required super.dataObject}){
+    if (isMain) {
+      relatedElements = [
+        DefaultTestingElement(idx: 1, isMain: false, dataObject: null,),
+        DefaultTestingElement(idx: 2, isMain: false, dataObject: null)
+      ];
+    }
+  }
+  @override
+  Widget getWidget() {
+    return DefaultTestingElementWidget(idx: idx);
+  }
+
+  @override
+  void resetWidget() {
+  }
+
+  @override
+  void expandAll() {
+  }
+
+  @override
+  void init() {
+  }
+}
+
+class DefaultTestingElementWidget extends StatefulWidget {
+  const DefaultTestingElementWidget({super.key, this.idx = 0});
+  final int idx;
+  @override
+  State<StatefulWidget> createState() => _DefaultTestingElementWidgetState();
+}
+
+class _DefaultTestingElementWidgetState extends State<DefaultTestingElementWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return Text("DefaultTestingElement${widget.idx}");
   }
 }
