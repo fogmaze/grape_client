@@ -161,6 +161,11 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
                 widget.element.left += details.delta.dx;
               });
             },
+            onTap: () {
+              setState(() {
+                widget.element.left = 800;
+              });
+            },
             child: SizedBox(
               width: MediaQuery.of(context).size.width * 0.7,
               child: Stack(

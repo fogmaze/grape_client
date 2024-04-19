@@ -8,6 +8,7 @@ import "package:http/http.dart" as http;
 import 'package:expandable_widgets/expandable_widgets.dart';
 import 'fileSync.dart';
 import 'Methods.dart';
+import 'Help.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
 
@@ -23,12 +24,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-
+      routes: {
+        "/" : (context) => const MyHomePage(title: "Yeah"),
+        "/help" : (context) => HelpPage(),
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: "Yeah",),
     );
   }
 }
@@ -53,6 +56,12 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, "/help");
+        },
+        child: const Icon(Icons.help),
+      ),
       body: Stack(
         alignment: Alignment.bottomCenter,
         children: [
@@ -436,11 +445,13 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
               children: [
                 Row( // TODO implement tool
                   children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text("from: ${widget.element.tags}", style: const TextStyle(fontSize: 16)),
+                    Expanded(
+                      child: FittedBox(
+                        alignment: Alignment.centerLeft,
+                        fit: BoxFit.scaleDown,
+                        child: Text("from: ${widget.element.tags}", style: const TextStyle(fontSize: 16)),
+                      ),
                     ),
-                    const Spacer(),
                     IconButton(
                       onPressed: () {
                         if (widget.element.isNoted) {
