@@ -636,7 +636,15 @@ void change2PreviousTestingElement() {
   if (nowTestingElementIdx > 0) {
     nowTestingElementIdx--;
     testingElements[nowTestingElementIdx].resetWidget();
-    testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
+
+    // handle the related elements
+    testingElements[nowTestingElementIdx].nowRelatedElementIdx--;
+    if (testingElements[nowTestingElementIdx].nowRelatedElementIdx < 0) {
+      testingElements[nowTestingElementIdx].nowRelatedElementIdx = testingElements[nowTestingElementIdx].relatedElements.length - 1;
+    }
+    if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
+      testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
+    }
     mainTestArea.updateTestingElement();
   }
 }

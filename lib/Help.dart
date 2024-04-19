@@ -23,9 +23,9 @@ class HelpPageState extends State<HelpPage> {
       body: Column(
         children: [
           Expanded(
-            child: Image.network("$baseHost/help/${widget.instructionIdx}.png",
+            child: Image.network("http://$baseHost/help/${widget.instructionIdx}.png",
               errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
-                return const Text('Reaching the end of the instructions.');
+                return const Text('Reached the end of the instructions.');
               },
             ),
           ),
