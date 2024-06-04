@@ -9,6 +9,7 @@ import 'package:expandable_widgets/expandable_widgets.dart';
 import 'fileSync.dart';
 import 'Methods.dart';
 import 'Help.dart';
+import 'KBWriter.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
 
@@ -25,8 +26,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       routes: {
-        "/" : (context) => const MyHomePage(title: "Yeah"),
+        "/test" : (context) => const MyHomePage(title: "Yeah"),
         "/help" : (context) => HelpPage(),
+        "/" : (context) => InputPage(information: collectParameters,),
       },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
@@ -58,14 +60,22 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, "/help");
+          setState(() {
+            isTestingSubNote = !isTestingSubNote;
+            var temp = testingElements;
+            testingElements = subNotedTestingElements;
+            subNotedTestingElements = temp;
+            var tempId = nowTestingElementIdx;
+            nowTestingElementIdx = nowSubNoteIdx;
+            nowSubNoteIdx = tempId;
+          });
         },
         child: const Icon(Icons.help),
       ),
       body: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          Text("$nowTestingElementIdx / ${testingElements.length}"),
+          Text("$nowTestingElementIdx / ${testingElements.length} / ${subNotedTestingElements.length}"),
           Positioned(
             key: mainAreaKey,
             left: mainTestArea.posLeft * MediaQuery.of(context).size.width,
@@ -295,14 +305,25 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                     });
                   },
                 ),
-
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      reGet();
-                    });
-                  },
-                  child: const Text("Reget"),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          reGet();
+                        });
+                      },
+                      child: const Text("Reget"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => InputPage(information: collectParameters,)));
+                        });
+                      },
+                      child: const Text("KBWrite"),
+                    ),
+                  ],
                 ),
               ]
           ),
@@ -454,15 +475,22 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                     ),
                     IconButton(
                       onPressed: () {
-                        if (widget.element.isNoted) {
-                          removeFromNote(widget.element);
+                        if (widget.element.methodName == "notes") {
+                          setState(() {
+                            removeNowTestingNoted();
+                          });
                         }
                         else {
-                          takeNote(widget.element);
+                          if (widget.element.isNoted) {
+                            removeFromNote(widget.element);
+                          }
+                          else {
+                            takeNote(widget.element);
+                          }
+                          setState(() {
+                            widget.element.isNoted = !widget.element.isNoted;
+                          });
                         }
-                        setState(() {
-                          widget.element.isNoted = !widget.element.isNoted;
-                        });
                       },
                       icon: Icon(widget.element.isNoted?Icons.star:Icons.star_border, color: widget.element.isNoted?Colors.orange:Colors.grey),
                     )
@@ -523,20 +551,26 @@ class MainTestArea {
     }
   }
   void handleDragEndGesture(DragEndDetails details) {
-    if (isMovingLeft()) {
-      takeNote(testingElements[nowTestingElementIdx]);
+    if (isMovingLeft() && !isTestingSubNote) {
+      if (!subNotedTestingElements.contains(testingElements[nowTestingElementIdx])) {
+        subNotedTestingElements.add(testingElements[nowTestingElementIdx]);
+        testingElements[nowTestingElementIdx].resetWidget();
+      }
+      if (isMovingDown()) {
+        takeNote(testingElements[nowTestingElementIdx]);
+      }
       change2NextTestingElement();
     }
-    else if (testingElements[nowTestingElementIdx].methodName == "notes" && isMovingRight()) {
-      var e = testingElements[nowTestingElementIdx];
-      change2NextTestingElement();
-      removeFromNote(e);
-      if (nowTestingElementIdx == 0) {
-        testingElements.removeAt(testingElements.length-1);
+    else if (isMovingRight() ) {
+      if (isTestingSubNote) {
+        if (subNotedTestingElements.contains(testingElements[nowTestingElementIdx])) {
+          removeNowTesting();
+        }
       }
       else {
-        testingElements.removeAt(nowTestingElementIdx-1);
-        nowTestingElementIdx--;
+        if (testingElements[nowTestingElementIdx].methodName == "notes") {
+          removeNowTestingNoted();
+        }
       }
     }
     else if (isMovingDown()) {
@@ -549,6 +583,34 @@ class MainTestArea {
     posTop = 0.08;
   }
 }
+
+void removeNowTesting() {
+  change2NextTestingElement();
+  if (nowTestingElementIdx == 0) {
+    testingElements.removeAt(testingElements.length-1);
+  }
+  else {
+    testingElements.removeAt(nowTestingElementIdx-1);
+    nowTestingElementIdx--;
+  }
+}
+
+void removeNowTestingNoted() {
+  if (testingElements[nowTestingElementIdx].methodName == "notes") {
+    var e = testingElements[nowTestingElementIdx];
+    change2NextTestingElement();
+    removeFromNote(e);
+    if (nowTestingElementIdx == 0) {
+      testingElements.removeAt(testingElements.length-1);
+    }
+    else {
+      testingElements.removeAt(nowTestingElementIdx-1);
+      nowTestingElementIdx--;
+    }
+  }
+}
+
+
 
 Future<void> takeNote(TestingElement e) async {
   if (e.methodName == "notes") {
@@ -577,6 +639,7 @@ Future<void> takeNote(TestingElement e) async {
           textColor: Colors.white,
           fontSize: 16.0
       );
+      e.isNoted = true;
     }
     else {
       Fluttertoast.showToast(
@@ -855,7 +918,10 @@ CollectParameters collectParameters = CollectParameters();
 List<String> relatedMethods = ["en_voc_def"];
 var nowTestingElementIdx = 0;
 var nowId = 0;
+bool isTestingSubNote = false;
 List<TestingElement> testingElements = [DefaultTestingElement(idx: 8, dataObject: 0), DefaultTestingElement(dataObject: 0), DefaultTestingElement(idx: 22, dataObject: 0)];
+List<TestingElement> subNotedTestingElements = [];
+var nowSubNoteIdx = 0;
 bool isCreateAccount = false;
 HttpServer? server;
 Map<String, String> methodName2Table = {

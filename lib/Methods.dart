@@ -283,6 +283,7 @@ class Notes_TestingElement extends TestingElement {
     actualElement = getTestingElementFromObject(dataObject["actual"]);
     time = dataObject["time"];
     tags = actualElement!.tags;
+    isNoted = true;
   }
 
   @override
