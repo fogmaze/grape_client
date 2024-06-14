@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -11,11 +13,17 @@ import 'Methods.dart';
 import 'Help.dart';
 import 'KBWriter.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:flutter_tts/flutter_tts_web.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  collectParameters.account = defaultAccount;
+  collectParameters.initFromServer().then((value) {
+    runApp(const MyApp());
+  });
+  flutterTts.setSpeechRate(1.3);
 }
 
 class MyApp extends StatelessWidget {
@@ -26,9 +34,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       routes: {
-        "/test" : (context) => const MyHomePage(title: "Yeah"),
+        "/" : (context) => MyHomePage(title: "Yeah", key: mainAreaKey),
         "/help" : (context) => HelpPage(),
-        "/" : (context) => InputPage(information: collectParameters,),
+        "/KBwrite" : (context) => const InputPage(),
       },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
@@ -55,29 +63,36 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Color getTestAreaColor() {
+    if (mainTestArea.isMovingDown() || mainTestArea.isMovingLeft() || mainTestArea.isMovingRight() || mainTestArea.isMovingUp()) {
+      return Theme.of(context).colorScheme.surfaceVariant;
+    }
+    else {
+      if (isTestingSubNote) {
+        return Theme.of(context).colorScheme.outline;
+      }
+      else {
+        return Theme.of(context).colorScheme.outlineVariant;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            isTestingSubNote = !isTestingSubNote;
-            var temp = testingElements;
-            testingElements = subNotedTestingElements;
-            subNotedTestingElements = temp;
-            var tempId = nowTestingElementIdx;
-            nowTestingElementIdx = nowSubNoteIdx;
-            nowSubNoteIdx = tempId;
+            switchMainAndSub();
           });
         },
-        child: const Icon(Icons.help),
+        child: isTestingSubNote ? const Icon(Icons.book_sharp):const Icon(Icons.book_outlined),
       ),
       body: Stack(
         alignment: Alignment.bottomCenter,
         children: [
           Text("$nowTestingElementIdx / ${testingElements.length} / ${subNotedTestingElements.length}"),
           Positioned(
-            key: mainAreaKey,
             left: mainTestArea.posLeft * MediaQuery.of(context).size.width,
             top: mainTestArea.posTop * MediaQuery.of(context).size.height,
             child: GestureDetector(
@@ -93,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                color: mainTestArea.isMovingDown() || mainTestArea.isMovingLeft() || mainTestArea.isMovingRight() || mainTestArea.isMovingUp()? Theme.of(context).colorScheme.outline: Theme.of(context).colorScheme.outlineVariant,
+                color: getTestAreaColor(),
                 borderRadius: BorderRadius.circular(10),
                 ),
                 child: SizedBox(
@@ -225,19 +240,40 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                     )
                   ],
                 ),
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const Text("Load previous "),
-                      Switch(
-                        value: collectParameters.loadPrevious,
-                        onChanged: (bool value) {
-                          setState(() {
-                            collectParameters.loadPrevious = value;
-                          });
-                        },
-                      ),
-                    ]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const Text("TTS "),
+                        const Expanded( child: SizedBox()) ,
+                        Switch(
+                          value: activateTTS,
+                          onChanged: (bool value) {
+                            setState(() {
+                              activateTTS = value;
+                            });
+                          },
+                        ),
+                      ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const Text("Load previous "),
+                        const Expanded( child: SizedBox()) ,
+                        Switch(
+                          value: collectParameters.loadPrevious,
+                          onChanged: (bool value) {
+                            setState(() {
+                              collectParameters.loadPrevious = value;
+                            });
+                          },
+                        ),
+                      ]),
+                ),
                 const Text("Method: "),
                 CheckboxListTile(
                   title: const Text("en_voc_def"),
@@ -305,25 +341,61 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                     });
                   },
                 ),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          reGet();
-                        });
-                      },
-                      child: const Text("Reget"),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => InputPage(information: collectParameters,)));
-                        });
-                      },
-                      child: const Text("KBWrite"),
-                    ),
-                  ],
+                Center(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                if (isTestingSubNote) {
+                                  switchMainAndSub();
+                                }
+                                reGet().then((value) {
+                                  mainAreaKey.currentState?.setState(() {});
+                                });
+                              });
+                            },
+                            child: const Text("Reget"),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const InputPage()));
+                              });
+                            },
+                            child: const Text("KBWrite"),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                if (isTestingSubNote) {
+                                  switchMainAndSub();
+                                }
+                                subNotedTestingElements.clear();
+                                nowSubNoteIdx = 0;
+                                mainTestArea.updateTestingElement();
+                                mainAreaKey.currentState?.setState(() {});
+                              });
+                            },
+                            child: const Text("Clear SubNote"),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               ]
           ),
@@ -388,8 +460,12 @@ abstract class TestingElement {
   String tags = "";
   bool isNoted = false;
   int noteTime = 0;
+  FlutterTts? ttsInstance;
+  bool enableTTS = true;
   TestingElement({required this.dataObject}){
     init();
+    ttsInstance = flutterTts;
+    enableTTS = activateTTS;
   }
   void regetRelatedTestingElements() async {
     relatedElements = await getRelatedTestingElements(this, );
@@ -420,6 +496,8 @@ abstract class TestingElement {
     }
   }
   abstract String methodName;
+  Future<void> onShow() async { }
+  Future<void> onHide() async { }
   GestureDetector? detector;
   List<TestingElement>relatedElements = [];
   var nowRelatedElementIdx = 0;
@@ -436,7 +514,10 @@ class SingleTestingArea {
   SingleTestingArea();
   TestingElement element = DefaultTestingElement(dataObject: null);
   void updateElement(TestingElement element) {
-    this.element = element;
+    this.element.onHide().then((value) {
+      this.element = element;
+      element.onShow();
+    });
   }
   Widget getWidget() => SingleTestingAreaWidget(element: element);
 }
@@ -529,7 +610,7 @@ class MainTestArea {
   }
   bool isMovingDown() {
     return posTop > 0.12;
-}
+  }
 
   void updateTestingElement() {
     mainSingleTestingArea.updateElement(testingElements[nowTestingElementIdx]);
@@ -543,7 +624,7 @@ class MainTestArea {
   void handleDragUpdateGesture(DragUpdateDetails details, BuildContext context) {
     posLeft += details.delta.dx / MediaQuery.of(context).size.width;
     posTop += details.delta.dy / MediaQuery.of(context).size.height;
-    if (posTop > 0.12) {
+    if (isMovingLeft() || isMovingRight() || isMovingUp() || isMovingDown()) {
       testingElements[nowTestingElementIdx].expandAll();
       if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
         testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].expandAll();
@@ -582,6 +663,16 @@ class MainTestArea {
     posLeft = 0.1;
     posTop = 0.08;
   }
+}
+
+void switchMainAndSub() {
+  var temp = testingElements;
+  testingElements = subNotedTestingElements;
+  subNotedTestingElements = temp;
+  var tempId = nowTestingElementIdx;
+  nowTestingElementIdx = nowSubNoteIdx;
+  nowSubNoteIdx = tempId;
+  isTestingSubNote = !isTestingSubNote;
 }
 
 void removeNowTesting() {
@@ -708,6 +799,7 @@ void change2PreviousTestingElement() {
     if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
       testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
     }
+    testingElements[nowTestingElementIdx].resetWidget();
     mainTestArea.updateTestingElement();
   }
 }
@@ -757,6 +849,7 @@ void change2NextTestingElement() {
       })
     );
   }
+  testingElements[nowTestingElementIdx].resetWidget();
   mainTestArea.updateTestingElement();
 }
 
@@ -897,6 +990,7 @@ Future<void> reGet() async{
         textColor: Colors.white,
         fontSize: 16.0
     );
+    mainTestArea.updateTestingElement();
   }
   else {
     Fluttertoast.showToast(
@@ -911,7 +1005,9 @@ Future<void> reGet() async{
   }
 }
 
+String defaultAccount = "ali";
 var baseHost = "150.116.202.108:49";
+//var baseHost = "localhost:8000";
 final GlobalKey mainAreaKey = GlobalKey();
 MainTestArea mainTestArea = MainTestArea();
 CollectParameters collectParameters = CollectParameters();
@@ -924,6 +1020,8 @@ List<TestingElement> subNotedTestingElements = [];
 var nowSubNoteIdx = 0;
 bool isCreateAccount = false;
 HttpServer? server;
+FlutterTts flutterTts = FlutterTts();
+bool activateTTS = true;
 Map<String, String> methodName2Table = {
   "en_voc_def": "en_voc",
   "en_voc_spe": "en_voc",

@@ -32,6 +32,13 @@ class EnVocDef_TestingElement extends TestingElement {
   void expandAll() {
     showNum = defList!.length;
   }
+
+  @override
+  Future<void> onShow() async {
+    if (enableTTS) {
+      await ttsInstance?.speak(que);
+    }
+  }
 }
 
 class EnVocDef_TestingElementWidget extends StatefulWidget {
@@ -66,7 +73,13 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
                 Row(
                   children: [
                     const Text("Tap to see the definition"),
-                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold))
+                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.volume_up),
+                      onPressed: () async {
+                          await widget.element.ttsInstance?.speak(widget.element.que);
+                      },
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -93,9 +106,13 @@ class EnVocSpe_TestingElement extends TestingElement {
     initialUpdate();
     defList = ans.split("|");
     defList!.shuffle(Random());
+    hint = getHint(que);
   }
   int showNum = 1;
   double left = 0;
+  bool isShowHint = false;
+  String hint = "";
+
 
   @override
   Widget getWidget() {
@@ -106,6 +123,7 @@ class EnVocSpe_TestingElement extends TestingElement {
   void resetWidget() {
     showNum = 1;
     left = 0;
+    isShowHint = false;
   }
 
   @override
@@ -121,6 +139,7 @@ class EnVocSpe_TestingElementWidget extends StatefulWidget {
   @override
   EnVocSpe_TestingElementWidgetState createState() => EnVocSpe_TestingElementWidgetState();
 }
+
 
 class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWidget> {
   @override
@@ -154,6 +173,8 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             ),
           ),
         ),
+        if (widget.element.isShowHint)
+          Text(widget.element.hint, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         Expanded(
           child: GestureDetector(
             onPanUpdate: (details) {
@@ -163,7 +184,12 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             },
             onTap: () {
               setState(() {
-                widget.element.left = 800;
+                if (!widget.element.isShowHint) {
+                  widget.element.isShowHint = true;
+                }
+                else {
+                  widget.element.expandAll();
+                }
               });
             },
             child: SizedBox(
@@ -346,4 +372,17 @@ class _DefaultTestingElementWidgetState extends State<DefaultTestingElementWidge
   Widget build(BuildContext context) {
     return Text("DefaultTestingElement${widget.idx}");
   }
+}
+
+String getHint(String ans) {
+  var words = ans.split(" ");
+  var processedWords = [];
+  for (var word in words) {
+    if (word.length > 3) {
+      processedWords.add(word[0] + "*" * (word.length - 2) + word[word.length - 1]);
+    } else {
+      processedWords.add("*" * word.length);
+    }
+  }
+  return processedWords.join(" ");
 }
