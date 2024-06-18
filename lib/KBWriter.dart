@@ -52,9 +52,9 @@ class InputPageState extends State<InputPage> {
       matchedView.add(
         Center(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 1),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 1),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
+              width: MediaQuery.of(context).size.width * 0.95,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.black),
                 color: i == matchedSelectedIdx ? Colors.blue : Colors.white,
@@ -79,8 +79,7 @@ class InputPageState extends State<InputPage> {
                 tags = text;
               },
             )
-          )
-        ] + matchedView + [
+          ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(instruction, style: const TextStyle(fontSize: 20)),
@@ -96,7 +95,7 @@ class InputPageState extends State<InputPage> {
               ),
             ),
           ),
-        ],
+        ] + matchedView,
       )
     );
   }

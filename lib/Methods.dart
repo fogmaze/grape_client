@@ -36,9 +36,10 @@ class EnVocDef_TestingElement extends TestingElement {
   @override
   Future<void> onShow() async {
     if (enableTTS) {
-      await ttsInstance?.speak(que);
+      await flutterTts?.speak(que);
     }
   }
+
 }
 
 class EnVocDef_TestingElementWidget extends StatefulWidget {

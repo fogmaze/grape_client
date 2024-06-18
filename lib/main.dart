@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import "package:http/http.dart" as http;
 import 'package:expandable_widgets/expandable_widgets.dart';
+import 'SelectTag.dart';
 import 'fileSync.dart';
 import 'Methods.dart';
 import 'Help.dart';
@@ -23,7 +24,6 @@ void main() {
   collectParameters.initFromServer().then((value) {
     runApp(const MyApp());
   });
-  flutterTts.setSpeechRate(1.3);
 }
 
 class MyApp extends StatelessWidget {
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       routes: {
-        "/" : (context) => MyHomePage(title: "Yeah", key: mainAreaKey),
+        "/" : (context) => MyHomePage(title: "Yeah", ),
         "/help" : (context) => HelpPage(),
         "/KBwrite" : (context) => const InputPage(),
       },
@@ -89,9 +89,9 @@ class _MyHomePageState extends State<MyHomePage> {
         child: isTestingSubNote ? const Icon(Icons.book_sharp):const Icon(Icons.book_outlined),
       ),
       body: Stack(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.topLeft,
         children: [
-          Text("$nowTestingElementIdx / ${testingElements.length} / ${subNotedTestingElements.length}"),
+          /*Text("$nowTestingElementIdx / ${testingElements.length} / ${subNotedTestingElements.length}"),
           Positioned(
             left: mainTestArea.posLeft * MediaQuery.of(context).size.width,
             top: mainTestArea.posTop * MediaQuery.of(context).size.height,
@@ -130,19 +130,24 @@ class _MyHomePageState extends State<MyHomePage> {
                 )
               ),
             ),
+          ),*/
+          
+          SizedBox(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+              child: FatherTestingAreaWidget(key: mainAreaKey,)
           ),
           SizedBox(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height,
-            child: const Stack(
+            child:  Stack(
               children: <Widget>[
                 Padding(
-                  padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                  child: ExpandableMenuWidget(),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                  child: ExpandableMenuWidget(key: expandableMenuKey),
                 ),
             ]),
           ),
-
         ],
       ),
     );
@@ -159,7 +164,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
   @override
   Widget build(BuildContext context) {
     return Expandable(
-        firstChild: Text("Limit: ${collectParameters.getLimit()}"),
+        firstChild: Text("Scope: ${collectParameters.getLimit()}"),
         subChild: const Text("change parameters"),
         secondChild: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0,),
@@ -221,7 +226,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                 ),Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    const SizedBox(width: 60, child: Text("Limit: ")),
+                    const SizedBox(width: 60, child: Text("Scope: ")),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -233,10 +238,27 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                           },
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
-                            labelText: 'Enter new limit',
+                            labelText: 'Enter scope or click the button to select',
                           ),
                         ),
                       ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          http.get(Uri.http(baseHost, "", {
+                            "type": "getTags",
+                          })).then((value) {
+                            var jsonData = jsonDecode(value.body);
+                            List<String> tagsResult = [];
+                            for (var e in jsonData["tags"]) {
+                              tagsResult.add(e);
+                            }
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => TagSelectPage(tags: tagsResult)));
+                          });
+                        });
+                      },
+                      icon: const Icon(Icons.find_in_page),
                     )
                   ],
                 ),
@@ -252,6 +274,9 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                           onChanged: (bool value) {
                             setState(() {
                               activateTTS = value;
+                              if (activateTTS&&flutterTts==null) {
+                                initTTS();
+                              }
                             });
                           },
                         ),
@@ -594,6 +619,116 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
   }
 }
 
+class FatherTestingAreaWidget extends StatefulWidget {
+  const FatherTestingAreaWidget({super.key, });
+  @override
+  State<StatefulWidget> createState() => _FatherTestingAreaWidgetState();
+}
+
+class _FatherTestingAreaWidgetState extends State<FatherTestingAreaWidget> {
+
+  Color getTestAreaColor() {
+    if (mainTestArea.isMovingDown() || mainTestArea.isMovingLeft() ||
+        mainTestArea.isMovingRight() || mainTestArea.isMovingUp()) {
+      return Theme
+          .of(context)
+          .colorScheme
+          .surfaceVariant;
+    }
+    else {
+      if (isTestingSubNote) {
+        return Theme
+            .of(context)
+            .colorScheme
+            .outline;
+      }
+      else {
+        return Theme
+            .of(context)
+            .colorScheme
+            .outlineVariant;
+      }
+    }
+  }
+
+    @override
+  Widget build(BuildContext context) {
+      return SizedBox(
+        width: MediaQuery
+            .of(context)
+            .size
+            .width,
+        height: MediaQuery
+            .of(context)
+            .size
+            .height,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+            children: [
+              Text("$nowTestingElementIdx / ${testingElements
+                  .length} / ${subNotedTestingElements.length}"),
+              Positioned(
+                left: mainTestArea.posLeft * MediaQuery
+                    .of(context)
+                    .size
+                    .width,
+                top: mainTestArea.posTop * MediaQuery
+                    .of(context)
+                    .size
+                    .height,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      mainTestArea.handleDragUpdateGesture(details, context);
+                    });
+                  },
+                  onPanEnd: (details) {
+                    setState(() {
+                      mainTestArea.handleDragEndGesture(details);
+                    });
+                  },
+                  child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: getTestAreaColor(),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: SizedBox(
+                          width: MediaQuery
+                              .of(context)
+                              .size
+                              .width * 0.8,
+                          height: MediaQuery
+                              .of(context)
+                              .size
+                              .height * 0.87,
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: MediaQuery
+                                        .of(context)
+                                        .size
+                                        .height * 0.018),
+                                child: mainTestArea.mainSingleTestingArea
+                                    .getWidget(),
+                              ),
+                              const Divider(),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: mainTestArea.relatedSingleTestingArea
+                                    .getWidget(),
+                              ),
+                            ],
+                          )
+                      )
+                  ),
+                ),
+              ),
+            ]),
+      );
+    }
+}
+
 class MainTestArea {
   SingleTestingArea relatedSingleTestingArea = SingleTestingArea();
   SingleTestingArea mainSingleTestingArea = SingleTestingArea();
@@ -612,7 +747,8 @@ class MainTestArea {
     return posTop > 0.12;
   }
 
-  void updateTestingElement() {
+  void updateTestingElement() async{
+
     mainSingleTestingArea.updateElement(testingElements[nowTestingElementIdx]);
     if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
       relatedSingleTestingArea.updateElement(testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx]);
@@ -1005,10 +1141,24 @@ Future<void> reGet() async{
   }
 }
 
+void initTTS() {
+  flutterTts = FlutterTts();
+  flutterTts!.setStartHandler(() {
+    ttsState = TtsState.playing;
+  });
+  flutterTts!.setCompletionHandler(() {
+    ttsState = TtsState.stopped;
+  });
+  flutterTts!.setCancelHandler(() {
+    ttsState = TtsState.stopped;
+  });
+}
+
 String defaultAccount = "ali";
 var baseHost = "150.116.202.108:49";
 //var baseHost = "localhost:8000";
 final GlobalKey mainAreaKey = GlobalKey();
+final GlobalKey expandableMenuKey = GlobalKey();
 MainTestArea mainTestArea = MainTestArea();
 CollectParameters collectParameters = CollectParameters();
 List<String> relatedMethods = ["en_voc_def"];
@@ -1020,8 +1170,11 @@ List<TestingElement> subNotedTestingElements = [];
 var nowSubNoteIdx = 0;
 bool isCreateAccount = false;
 HttpServer? server;
-FlutterTts flutterTts = FlutterTts();
-bool activateTTS = true;
+FlutterTts? flutterTts;
+bool activateTTS = false;
+// tts state
+enum TtsState { playing, stopped, paused, continued }
+TtsState ttsState = TtsState.stopped;
 Map<String, String> methodName2Table = {
   "en_voc_def": "en_voc",
   "en_voc_spe": "en_voc",
