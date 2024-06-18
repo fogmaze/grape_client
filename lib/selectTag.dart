@@ -1,16 +1,10 @@
-import 'dart:convert';
-import 'dart:math';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/widgets.dart';
 import 'main.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:fluttertoast/fluttertoast.dart';
 
 class TagSelectPage extends StatefulWidget {
-  TagSelectPage({super.key, required this.tags});
+  const TagSelectPage({super.key, required this.tags});
 
-  List<String> tags;
+  final List<String> tags;
 
   @override
   TagSelectPageState createState() => TagSelectPageState();

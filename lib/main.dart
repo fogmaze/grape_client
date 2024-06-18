@@ -1,20 +1,14 @@
 import 'dart:math';
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import "package:http/http.dart" as http;
 import 'package:expandable_widgets/expandable_widgets.dart';
-import 'SelectTag.dart';
-import 'fileSync.dart';
+import 'selectTag.dart';
 import 'Methods.dart';
-import 'Help.dart';
-import 'KBWriter.dart';
-import 'package:network_info_plus/network_info_plus.dart';
-import 'package:flutter_tts/flutter_tts_web.dart';
+import 'help.dart';
+import 'keyboardWriter.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 
@@ -34,7 +28,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       routes: {
-        "/" : (context) => MyHomePage(title: "Yeah", ),
+        "/" : (context) => const MyHomePage(title: "Yeah", ),
         "/help" : (context) => HelpPage(),
         "/KBwrite" : (context) => const InputPage(),
       },
@@ -63,20 +57,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Color getTestAreaColor() {
-    if (mainTestArea.isMovingDown() || mainTestArea.isMovingLeft() || mainTestArea.isMovingRight() || mainTestArea.isMovingUp()) {
-      return Theme.of(context).colorScheme.surfaceVariant;
-    }
-    else {
-      if (isTestingSubNote) {
-        return Theme.of(context).colorScheme.outline;
-      }
-      else {
-        return Theme.of(context).colorScheme.outlineVariant;
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,47 +71,6 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Stack(
         alignment: Alignment.topLeft,
         children: [
-          /*Text("$nowTestingElementIdx / ${testingElements.length} / ${subNotedTestingElements.length}"),
-          Positioned(
-            left: mainTestArea.posLeft * MediaQuery.of(context).size.width,
-            top: mainTestArea.posTop * MediaQuery.of(context).size.height,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  mainTestArea.handleDragUpdateGesture(details, context);
-                });
-              },
-              onPanEnd: (details) {
-                setState(() {
-                  mainTestArea.handleDragEndGesture(details);
-                });
-              },
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                color: getTestAreaColor(),
-                borderRadius: BorderRadius.circular(10),
-                ),
-                child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.8,
-                height: MediaQuery.of(context).size.height * 0.87,
-                  child: Column(
-                    children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height * 0.018),
-                      child: mainTestArea.mainSingleTestingArea.getWidget(),
-                    ),
-                    const Divider(),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child:mainTestArea.relatedSingleTestingArea.getWidget(),
-                    ),
-                    ],
-                  )
-                )
-              ),
-            ),
-          ),*/
-          
           SizedBox(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height,
@@ -809,6 +748,7 @@ void switchMainAndSub() {
   nowTestingElementIdx = nowSubNoteIdx;
   nowSubNoteIdx = tempId;
   isTestingSubNote = !isTestingSubNote;
+  mainTestArea.updateTestingElement();
 }
 
 void removeNowTesting() {
@@ -884,14 +824,6 @@ Future<void> takeNote(TestingElement e) async {
 
 Future<void> removeFromNote(TestingElement element) async {
   if (element.methodName == "notes") {
-    Notes_TestingElement e = element as Notes_TestingElement;
-    var response = await http.get(
-        Uri.http(baseHost, "", {
-          "type" : "unote",
-          "time" : e.time.toString(),
-        }
-        )
-    );
     Fluttertoast.showToast(
         msg: "Note removed",
         toastLength: Toast.LENGTH_SHORT,
@@ -903,13 +835,6 @@ Future<void> removeFromNote(TestingElement element) async {
     );
   }
   else {
-    var response = await http.get(
-        Uri.http(baseHost, "", {
-          "type": "unote",
-          "time": element.noteTime.toString(),
-        }
-        )
-    );
     Fluttertoast.showToast(
         msg: "Note removed",
         toastLength: Toast.LENGTH_SHORT,
@@ -991,7 +916,6 @@ void change2NextTestingElement() {
 
 Future<List<TestingElement>> getRelatedTestingElements(TestingElement element) async {
   List<TestingElement>? ret;
-  List<Map<String, dynamic>> result;
   if (element.methodName.contains("voc")) {
     if (element.methodName.contains("def")) {
     }
@@ -1001,8 +925,6 @@ Future<List<TestingElement>> getRelatedTestingElements(TestingElement element) a
   }
   if (ret == null) {
     return [DefaultTestingElement(dataObject: 0)];
-  }
-  for (var e in ret) {
   }
   return ret;
 }
@@ -1021,7 +943,7 @@ Future<int> initLoading() async {
     );
     await reGet();
     int? id = 0;
-    return id!;
+    return id;
   }
   else {
     int id = matchedId[0]['id'];
