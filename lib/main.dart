@@ -100,8 +100,12 @@ class ExpandableMenuWidget extends StatefulWidget {
 }
 
 class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
+  var accountController = TextEditingController();
+  var scopeController = TextEditingController();
   @override
   Widget build(BuildContext context) {
+    accountController.text = collectParameters.account;
+    scopeController.text = collectParameters.limit;
     return Expandable(
         firstChild: Text("Scope: ${collectParameters.getLimit()}"),
         subChild: const Text("change parameters"),
@@ -117,12 +121,11 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: TextField(
+                          controller: accountController,
                           onSubmitted: (String value) {
                             collectParameters.account = value;
                             collectParameters.initFromServer().then( (v) {
-                              setState(() {
-
-                              });
+                              setState(() { });
                             });
                           },
                           decoration: const InputDecoration(
@@ -170,6 +173,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: TextField(
+                          controller: scopeController,
                           onChanged: (String value) {
                             setState(() {
                               collectParameters.handleLimitInput(value);
@@ -198,45 +202,62 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                         });
                       },
                       icon: const Icon(Icons.find_in_page),
+                      iconSize: 30,
                     )
                   ],
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const Text("TTS "),
-                        const Expanded( child: SizedBox()) ,
-                        Switch(
-                          value: activateTTS,
-                          onChanged: (bool value) {
-                            setState(() {
-                              activateTTS = value;
-                              if (activateTTS&&flutterTts==null) {
-                                initTTS();
-                              }
-                            });
-                          },
-                        ),
-                      ]),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        activateTTS = !activateTTS;
+                        if (activateTTS&&flutterTts==null) {
+                          initTTS();
+                        }
+                      });
+                    },
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const Text("TTS "),
+                          const Expanded( child: SizedBox()) ,
+                          Switch(
+                            value: activateTTS, onChanged: (bool value) {
+                              setState(() {
+                                activateTTS = value;
+                                if (activateTTS&&flutterTts==null) {
+                                  initTTS();
+                                }
+                              });
+                            },
+                          ),
+                        ]),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const Text("Load previous "),
-                        const Expanded( child: SizedBox()) ,
-                        Switch(
-                          value: collectParameters.loadPrevious,
-                          onChanged: (bool value) {
-                            setState(() {
-                              collectParameters.loadPrevious = value;
-                            });
-                          },
-                        ),
-                      ]),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        collectParameters.loadPrevious = !collectParameters.loadPrevious;
+                      });
+                    },
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const Text("Load previous "),
+                          const Expanded( child: SizedBox()) ,
+                          Switch(
+                            value: collectParameters.loadPrevious,
+                            onChanged: (bool value) {
+                              setState(() {
+                                collectParameters.loadPrevious = value;
+                              });
+                            },
+                          ),
+                        ]),
+                  ),
                 ),
                 const Text("Method: "),
                 CheckboxListTile(
@@ -911,6 +932,7 @@ void change2NextTestingElement() {
     );
   }
   testingElements[nowTestingElementIdx].resetWidget();
+  testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
   mainTestArea.updateTestingElement();
 }
 

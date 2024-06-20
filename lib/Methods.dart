@@ -35,7 +35,7 @@ class EnVocDef_TestingElement extends TestingElement {
 
   @override
   Future<void> onShow() async {
-    if (enableTTS) {
+    if (activateTTS) {
       await flutterTts?.speak(que);
     }
   }
@@ -113,6 +113,7 @@ class EnVocSpe_TestingElement extends TestingElement {
   double left = 0;
   bool isShowHint = false;
   String hint = "";
+  bool isSpoken = false;
 
 
   @override
@@ -125,12 +126,17 @@ class EnVocSpe_TestingElement extends TestingElement {
     showNum = 1;
     left = 0;
     isShowHint = false;
+    isSpoken = false;
   }
 
   @override
   void expandAll() {
     showNum = defList!.length;
     left = double.infinity;
+    if (activateTTS && !isSpoken) {
+      flutterTts?.speak(que);
+      isSpoken = true;
+    }
   }
 }
 
