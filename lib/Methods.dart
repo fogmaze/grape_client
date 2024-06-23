@@ -74,7 +74,6 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
                 Row(
                   children: [
                     const Text("Tap to see the definition"),
-                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold)),
                     IconButton(
                       icon: const Icon(Icons.volume_up),
                       onPressed: () async {
@@ -88,6 +87,8 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
                 const SizedBox(height: 10),
                 for (int i = 0; i < widget.element.showNum; i++)
                   Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
+                  const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -169,13 +170,8 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    const Text("Spell it! click to see other definitions"),
-                    Text("(${widget.element.defList!.length - widget.element.showNum} left)", style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold))
-                  ],
-                ),
-                Text(widget.element.defList!.sublist(0, widget.element.showNum).join("/"), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text("Spell it! click to see other definitions"),
+                Text(widget.element.defList!.sublist(0, widget.element.showNum).join("/") + "/..." * (widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
           ),

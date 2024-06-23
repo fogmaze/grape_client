@@ -36,18 +36,24 @@ class TagSelectPageState extends State<TagSelectPage> {
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (BuildContext context, int index) {
-                  return CheckboxListTile(
-                    title: Text(widget.tags[index]),
-                    value: widget.selectedTags.contains(widget.tags[index]),
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          widget.selectedTags.add(widget.tags[index]);
-                        } else {
-                          widget.selectedTags.remove(widget.tags[index]);
-                        }
-                      });
-                    },
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: widget.selectedTags.contains(widget.tags[index]) ? Colors.blue[50] : Colors.white,
+                    ),
+                    child: CheckboxListTile(
+                      title: Text(widget.tags[index], style: TextStyle(fontWeight: widget.selectedTags.contains(widget.tags[index]) ? FontWeight.bold : FontWeight.normal)),
+                      value: widget.selectedTags.contains(widget.tags[index]),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            widget.selectedTags.add(widget.tags[index]);
+                          } else {
+                            widget.selectedTags.remove(widget.tags[index]);
+                          }
+                        });
+                      },
+                      activeColor: Colors.blue
+                    ),
                   );/*ListTile(
                     title: Text(widget.tags[index]),
                     onTap: () {

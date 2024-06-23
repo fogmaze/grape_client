@@ -11,13 +11,20 @@ import 'help.dart';
 import 'keyboardWriter.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+bool useDefaultAccount = true;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  collectParameters.account = defaultAccount;
-  collectParameters.initFromServer().then((value) {
+
+  if (useDefaultAccount) {
+    collectParameters.account = defaultAccount;
+    collectParameters.initFromServer().then((value) {
+      runApp(const MyApp());
+    });
+  }
+  else {
     runApp(const MyApp());
-  });
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -347,6 +354,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                           ),
                         ),
                       ),
+                      if (collectParameters.account == defaultAccount)
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
@@ -932,7 +940,9 @@ void change2NextTestingElement() {
     );
   }
   testingElements[nowTestingElementIdx].resetWidget();
-  testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
+  if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
+    testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
+  }
   mainTestArea.updateTestingElement();
 }
 
