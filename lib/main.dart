@@ -182,9 +182,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                         child: TextField(
                           controller: scopeController,
                           onChanged: (String value) {
-                            setState(() {
-                              collectParameters.handleLimitInput(value);
-                            });
+                            collectParameters.handleLimitInput(value);
                           },
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
