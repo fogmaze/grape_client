@@ -109,6 +109,8 @@ class ExpandableMenuWidget extends StatefulWidget {
 class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
   var accountController = TextEditingController();
   var scopeController = TextEditingController();
+  var minLevelController = TextEditingController(text: "0");
+  var maxLevelController = TextEditingController(text: "6");
   @override
   Widget build(BuildContext context) {
     accountController.text = collectParameters.account;
@@ -120,7 +122,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 8.0,),
           child: Column(
               children: [
-                Row(
+                /*Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     const SizedBox(width: 60, child: Text("Account: ")),
@@ -172,7 +174,50 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                       });
                     }, icon: const Icon(Icons.add_reaction)):const SizedBox()
                   ],
-                ),Row(
+                )*/
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const Text("Testing Level Range: "),
+                    Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          width: 40,
+                          child: TextField(
+                            controller: minLevelController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "min"
+                            ),
+                            onChanged: (v) {
+                              collectParameters.levelRange[0] = v;
+                            }
+                          ),
+                        )
+                    ),
+                    const Text("~"),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: 40,
+                        child: TextField(
+                          controller: maxLevelController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: "max"
+                          ),
+                          onChanged: (v) {
+                            collectParameters.levelRange[1] = v;
+                          }
+                        ),
+                      )
+                    )
+
+                  ]
+                ),
+                Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     const SizedBox(width: 60, child: Text("Scope: ")),
@@ -415,7 +460,8 @@ class CollectParameters {
         );
       }
       else {
-        minLevel = int.parse(jsonData["level"]);
+        levelRange[0] = int.parse(jsonData["level"]);
+        levelRange[1] = int.parse(jsonData["level_max"]);
         limit = jsonData["tags"];
         loadPrevious = int.parse(jsonData["lp"]) != 0;
         methods = jsonData["methods"].split("|");
@@ -424,7 +470,7 @@ class CollectParameters {
   }
   Future<void> save2DB() async{
   }
-  int minLevel = -1;
+  List levelRange = [0, 6];
   String limit = "";
   String account = "";
   bool loadPrevious = false;
@@ -445,6 +491,7 @@ class CollectParameters {
 abstract class TestingElement {
   dynamic dataObject;
   int time = 0;
+  int level = 0;
   String que = "";
   String ans = "";
   String testingBlacklist = "";
@@ -485,6 +532,7 @@ abstract class TestingElement {
         relatedElements.add(getTestingElementFromObject(e));
       }
     }
+    level = dataObject["level"];
   }
   abstract String methodName;
   Future<void> onShow() async { }
@@ -544,6 +592,15 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                         fit: BoxFit.scaleDown,
                         child: Text("from: ${widget.element.tags}", style: const TextStyle(fontSize: 16)),
                       ),
+                    ),
+                    Container(
+                      decoration: const BoxDecoration(
+                          color: Colors.deepOrange
+                      ),
+                      child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Center(child: Text("${widget.element.level}", style: const TextStyle(color: Colors.white)))),
                     ),
                     IconButton(
                       onPressed: () {
@@ -1033,7 +1090,8 @@ Future<void> reGet() async{
     "tags": tags,
     "isLoad": "${collectParameters.loadPrevious}",
     "account": collectParameters.account,
-    "level": "${collectParameters.minLevel}",
+    "minLevel": "${collectParameters.levelRange[0]}",
+    "maxLevel": "${collectParameters.levelRange[1]}",
   };
   Fluttertoast.showToast(
       msg: "Fetching data from server, please wait patiently.",
