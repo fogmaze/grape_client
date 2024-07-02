@@ -312,6 +312,7 @@ class Notes_TestingElement extends TestingElement {
     actualElement = getTestingElementFromObject(dataObject["actual"]);
     time = dataObject["time"];
     tags = actualElement!.tags;
+    level = dataObject["level"];
     isNoted = true;
   }
 
