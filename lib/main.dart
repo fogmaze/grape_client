@@ -16,6 +16,7 @@ bool useDefaultAccount = true;
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  collectParameters.account = Uri.base.queryParameters;
   if (useDefaultAccount) {
     collectParameters.account = defaultAccount;
     collectParameters.initFromServer().then((value) {
@@ -109,8 +110,8 @@ class ExpandableMenuWidget extends StatefulWidget {
 class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
   var accountController = TextEditingController();
   var scopeController = TextEditingController();
-  var minLevelController = TextEditingController(text: "0");
-  var maxLevelController = TextEditingController(text: "6");
+  var minLevelController = TextEditingController(text: "${collectParameters.levelRange[0]}");
+  var maxLevelController = TextEditingController(text: "${collectParameters.levelRange[1]}");
   @override
   Widget build(BuildContext context) {
     accountController.text = collectParameters.account;
@@ -607,6 +608,7 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                         if (widget.element.methodName == "notes") {
                           setState(() {
                             removeNowTestingNoted();
+                            mainTestArea.updateTestingElement();
                           });
                         }
                         else {
@@ -907,27 +909,37 @@ Future<void> takeNote(TestingElement e) async {
 }
 
 Future<void> removeFromNote(TestingElement element) async {
-  if (element.methodName == "notes") {
-    Fluttertoast.showToast(
-        msg: "Note removed",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM_LEFT,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.black,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
-  }
-  else {
-    Fluttertoast.showToast(
-        msg: "Note removed",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM_LEFT,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.black,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
+  var response = await http.get(Uri.http(
+      baseHost, "",
+      {
+        "type": "unote",
+        "time": "${testingElements[nowTestingElementIdx].noteTime}"
+      }
+  ));
+  if (response.statusCode == 200) {
+    var jsonData = jsonDecode(response.body);
+    if (jsonData["status"] == "success") {
+      Fluttertoast.showToast(
+          msg: "Note removed",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.black,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+    else {
+      Fluttertoast.showToast(
+          msg: "Note removing failed",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.black,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
   }
 }
 

@@ -313,6 +313,8 @@ class Notes_TestingElement extends TestingElement {
     time = dataObject["time"];
     tags = actualElement!.tags;
     level = dataObject["level"];
+    relatedElements = actualElement!.relatedElements;
+    noteTime = time;
     isNoted = true;
   }
 
