@@ -8,37 +8,42 @@ import 'package:expandable_widgets/expandable_widgets.dart';
 import 'selectTag.dart';
 import 'Methods.dart';
 import 'help.dart';
+import 'newAccount.dart';
 import 'keyboardWriter.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-bool useDefaultAccount = true;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  collectParameters.account = Uri.base.queryParameters;
-  if (useDefaultAccount) {
-    collectParameters.account = defaultAccount;
-    collectParameters.initFromServer().then((value) {
+  defaultAccount = Uri.base.path.substring(1);
+  collectParameters.account = defaultAccount;
+  collectParameters.initFromServer().then((value) {
+    if (value) {
+      reGet().then((value) {mainAreaKey.currentState?.setState(() {});});
       runApp(const MyApp());
-    });
-  }
-  else {
-    runApp(const MyApp());
-  }
+    }
+    else {
+      runApp(const MyApp(initialRoute: "/confirm"));
+    }
+  });
+
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, this.initialRoute = "/"});
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      initialRoute: initialRoute,
       routes: {
         "/" : (context) => const MyHomePage(title: "Yeah", ),
         "/help" : (context) => HelpPage(),
         "/KBwrite" : (context) => const InputPage(),
+        "/confirm": (context) => const ConfirmPage(),
       },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
@@ -442,32 +447,31 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
 }
 
 class CollectParameters {
-  Future<void> initFromServer() async {
+  Future<bool> initFromServer() async {
     var response = await http.get(Uri.http(baseHost, "", {"type": "getParam", "account": account}));
     if (response.statusCode == 200) {
       var data = response.body;
       // convert string to json
       var jsonData = jsonDecode(data);
       if (jsonData["hasAccount"] == "false") {
-        isCreateAccount = true;
-        Fluttertoast.showToast(
-            msg: "Account not found, click the button to create or input another account",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.CENTER,
-            timeInSecForIosWeb: 4,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            fontSize: 16.0
-        );
+        return false;
       }
       else {
         levelRange[0] = int.parse(jsonData["level"]);
         levelRange[1] = int.parse(jsonData["level_max"]);
         limit = jsonData["tags"];
         loadPrevious = int.parse(jsonData["lp"]) != 0;
-        methods = jsonData["methods"].split("|");
+        var methodsTmp = jsonData["methods"].split("|");
+        for (var e in methodsTmp) {
+          if (e != "") {
+            methods.add(e);
+          }
+        }
+
       }
+      return true;
     }
+    return false;
   }
   Future<void> save2DB() async{
   }
