@@ -967,16 +967,18 @@ void change2PreviousTestingElement() {
 
 void change2NextTestingElement() {
   if (nowTestingElementIdx < testingElements.length - 1) {
-    http.get(Uri.http(
-      baseHost, "",
-      {
-        "type": "update_rec",
-        "operation": "del",
-        "targetId": nowId.toString(),
-        "time": testingElements[nowTestingElementIdx].time.toString(),
-        "method_name": testingElements[nowTestingElementIdx].methodName,
-      }
-    ));
+    if (!isTestingSubNote) {
+      http.get(Uri.http(
+          baseHost, "",
+          {
+            "type": "update_rec",
+            "operation": "del",
+            "targetId": nowId.toString(),
+            "time": testingElements[nowTestingElementIdx].time.toString(),
+            "method_name": testingElements[nowTestingElementIdx].methodName,
+          }
+      ));
+    }
     testingElements[nowTestingElementIdx].nowRelatedElementIdx++;
     if (testingElements[nowTestingElementIdx].nowRelatedElementIdx >= testingElements[nowTestingElementIdx].relatedElements.length) {
       testingElements[nowTestingElementIdx].nowRelatedElementIdx = 0;
@@ -995,20 +997,22 @@ void change2NextTestingElement() {
       methodNames.add(e.methodName);
       times.add(e.time);
     }
-    http.post(
-      Uri.http(
-        baseHost, "",
-        {
-          "type": "update_rec",
-          "operation": "reset",
-          "targetId": nowId.toString(),
-        }
-      ),
-      body: jsonEncode({
-        "method_names": methodNames,
-        "times": times,
-      })
-    );
+    if (!isTestingSubNote) {
+      http.post(
+          Uri.http(
+              baseHost, "",
+              {
+                "type": "update_rec",
+                "operation": "reset",
+                "targetId": nowId.toString(),
+              }
+          ),
+          body: jsonEncode({
+            "method_names": methodNames,
+            "times": times,
+          })
+      );
+    }
   }
   testingElements[nowTestingElementIdx].resetWidget();
   if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
