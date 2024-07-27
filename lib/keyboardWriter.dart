@@ -54,7 +54,7 @@ class InputPageState extends State<InputPage> {
               width: MediaQuery.of(context).size.width * 0.95,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.black),
-                color: i == matchedSelectedIdx ? Colors.blue : Colors.white,
+                color: i == matchedSelectedIdx ? Theme.of(context).colorScheme.onPrimary: Theme.of(context).colorScheme.onSecondary,
               ),
               child: Text(text, style: const TextStyle(fontSize: 20)),
             ),
@@ -67,6 +67,7 @@ class InputPageState extends State<InputPage> {
       appBar: AppBar(
         title: const Text('Input'),
       ),
+      backgroundColor: Theme.of(context).colorScheme.surfaceBright,
       body: Column(
         children: <Widget>[
           Padding(

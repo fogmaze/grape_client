@@ -36,7 +36,7 @@ class TagSelectPageState extends State<TagSelectPage> {
                 (BuildContext context, int index) {
                   return Container(
                     decoration: BoxDecoration(
-                      color: widget.selectedTags.contains(widget.tags[index]) ? Colors.blue[50] : Colors.white,
+                      color: widget.selectedTags.contains(widget.tags[index]) ? Theme.of(context).colorScheme.onPrimary: Theme.of(context).colorScheme.onSecondary,
                     ),
                     child: CheckboxListTile(
                       title: Text(widget.tags[index], style: TextStyle(fontWeight: widget.selectedTags.contains(widget.tags[index]) ? FontWeight.bold : FontWeight.normal)),

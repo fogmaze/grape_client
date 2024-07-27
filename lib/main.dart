@@ -15,12 +15,14 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
   defaultAccount = Uri.base.path.substring(1);
+  if (defaultAccount.isEmpty) {
+    defaultAccount = "default";
+  }
   collectParameters.account = defaultAccount;
   collectParameters.initFromServer().then((value) {
     if (value) {
-      reGet().then((value) {mainAreaKey.currentState?.setState(() {});});
+      reGet(toast: false).then((value) {mainAreaKey.currentState?.setState(() {});});
       runApp(const MyApp());
     }
     else {
@@ -37,7 +39,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'GSAT Pro',
       initialRoute: initialRoute,
       routes: {
         "/" : (context) => const MyHomePage(title: "Yeah", ),
@@ -46,9 +48,15 @@ class MyApp extends StatelessWidget {
         "/confirm": (context) => const ConfirmPage(),
       },
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      themeMode: nowThemeMode,
     );
   }
 }
@@ -122,65 +130,14 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
     accountController.text = collectParameters.account;
     scopeController.text = collectParameters.limit;
     return Expandable(
+        backgroundColor: Theme.of(context).colorScheme.surfaceBright,
         firstChild: Text("Scope: ${collectParameters.getLimit()}"),
         subChild: const Text("change parameters"),
         secondChild: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0,),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /*Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const SizedBox(width: 60, child: Text("Account: ")),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextField(
-                          controller: accountController,
-                          onSubmitted: (String value) {
-                            collectParameters.account = value;
-                            collectParameters.initFromServer().then( (v) {
-                              setState(() { });
-                            });
-                          },
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Enter your account',
-                          ),
-                        ),
-                      ),
-                    ),
-                    isCreateAccount?IconButton(onPressed: () {
-                      isCreateAccount = false;
-                      http.get(Uri.http(baseHost, "", {"type": "createAccount", "account": collectParameters.account})).then((value) {
-                        var jsonData = jsonDecode(value.body);
-                        if (jsonData["status"] == "success") {
-                          Fluttertoast.showToast(
-                              msg: "Account created",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.CENTER,
-                              timeInSecForIosWeb: 1,
-                              backgroundColor: Colors.green,
-                              textColor: Colors.white,
-                              fontSize: 16.0
-                          );
-                        }
-                        else {
-                          Fluttertoast.showToast(
-                              msg: "Already been created, pls change",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.CENTER,
-                              timeInSecForIosWeb: 1,
-                              backgroundColor: Colors.red,
-                              textColor: Colors.white,
-                              fontSize: 16.0
-                          );
-                        }
-
-                      });
-                    }, icon: const Icon(Icons.add_reaction)):const SizedBox()
-                  ],
-                )*/
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -219,7 +176,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                           }
                         ),
                       )
-                    )
+                    ),
 
                   ]
                 ),
@@ -315,9 +272,9 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                         ]),
                   ),
                 ),
-                const Text("Method: "),
+                const Text("Testing Method:", style: TextStyle(fontWeight: FontWeight.bold),),
                 CheckboxListTile(
-                  title: const Text("en_voc_def"),
+                  title: const Text("Definition"),
                   value: collectParameters.methods.contains("en_voc_def"),
                   onChanged: (bool? value) {
                     setState(() {
@@ -330,7 +287,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                   },
                 ),
                 CheckboxListTile(
-                  title: const Text("en_voc_spe"),
+                  title: const Text("Spelling"),
                   value: collectParameters.methods.contains("en_voc_spe"),
                   onChanged: (bool? value) {
                     setState(() {
@@ -343,7 +300,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                   },
                 ),
                 CheckboxListTile(
-                  title: const Text("notes"),
+                  title: const Text("Noted Ones"),
                   value: collectParameters.methods.contains("notes"),
                   onChanged: (bool? value) {
                     setState(() {
@@ -355,9 +312,9 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                     });
                   },
                 ),
-                const Text("Related Method: "),
+                const Text("Related Method: ", style: TextStyle(fontWeight: FontWeight.bold),),
                 CheckboxListTile(
-                  title: const Text("en_voc_def"),
+                  title: const Text("Definition"),
                   value: relatedMethods.contains("en_voc_def"),
                   onChanged: (bool? value) {
                     setState(() {
@@ -370,7 +327,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                   },
                 ),
                 CheckboxListTile(
-                  title: const Text("en_voc_spe"),
+                  title: const Text("Spelling"),
                   value: relatedMethods.contains("en_voc_spe"),
                   onChanged: (bool? value) {
                     setState(() {
@@ -609,23 +566,21 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                     ),
                     IconButton(
                       onPressed: () {
-                        if (widget.element.methodName == "notes") {
-                          setState(() {
-                            removeNowTestingNoted();
+                        setState(() {
+                          if (widget.element.methodName == "notes") {
+                            removeFromNote(testingElements[nowTestingElementIdx]);
+                            removeNowTesting();
                             mainTestArea.updateTestingElement();
-                          });
-                        }
-                        else {
-                          if (widget.element.isNoted) {
-                            removeFromNote(widget.element);
                           }
                           else {
-                            takeNote(widget.element);
+                            if (widget.element.isNoted) {
+                              removeFromNote(widget.element);
+                            }
+                            else {
+                              takeNote(widget.element);
+                            }
                           }
-                          setState(() {
-                            widget.element.isNoted = !widget.element.isNoted;
-                          });
-                        }
+                        });
                       },
                       icon: Icon(widget.element.isNoted?Icons.star:Icons.star_border, color: widget.element.isNoted?Colors.orange:Colors.grey),
                     )
@@ -809,13 +764,16 @@ class MainTestArea {
     }
     else if (isMovingRight() ) {
       if (isTestingSubNote) {
-        if (subNotedTestingElements.contains(testingElements[nowTestingElementIdx])) {
-          removeNowTesting();
-        }
+        removeNowTesting();
       }
       else {
         if (testingElements[nowTestingElementIdx].methodName == "notes") {
-          removeNowTestingNoted();
+          removeFromNote(testingElements[nowTestingElementIdx]);
+          removeNowTesting();
+        }
+        else if(testingElements[nowTestingElementIdx].isNoted) {
+          removeFromNote(testingElements[nowTestingElementIdx]);
+          change2NextTestingElement();
         }
       }
     }
@@ -852,24 +810,9 @@ void removeNowTesting() {
   }
 }
 
-void removeNowTestingNoted() {
-  if (testingElements[nowTestingElementIdx].methodName == "notes") {
-    var e = testingElements[nowTestingElementIdx];
-    change2NextTestingElement();
-    removeFromNote(e);
-    if (nowTestingElementIdx == 0) {
-      testingElements.removeAt(testingElements.length-1);
-    }
-    else {
-      testingElements.removeAt(nowTestingElementIdx-1);
-      nowTestingElementIdx--;
-    }
-  }
-}
-
-
 
 Future<void> takeNote(TestingElement e) async {
+  e.isNoted = true;
   if (e.methodName == "notes") {
     return ;
   }
@@ -897,6 +840,7 @@ Future<void> takeNote(TestingElement e) async {
           fontSize: 16.0
       );
       e.isNoted = true;
+      e.noteTime = jsonData["time"];
     }
     else {
       Fluttertoast.showToast(
@@ -913,11 +857,12 @@ Future<void> takeNote(TestingElement e) async {
 }
 
 Future<void> removeFromNote(TestingElement element) async {
+  element.isNoted = false;
   var response = await http.get(Uri.http(
       baseHost, "",
       {
         "type": "unote",
-        "time": "${testingElements[nowTestingElementIdx].noteTime}"
+        "time": "${element.noteTime}"
       }
   ));
   if (response.statusCode == 200) {
@@ -932,6 +877,8 @@ Future<void> removeFromNote(TestingElement element) async {
           textColor: Colors.white,
           fontSize: 16.0
       );
+      element.isNoted = false;
+      element.noteTime = 0;
     }
     else {
       Fluttertoast.showToast(
@@ -943,6 +890,7 @@ Future<void> removeFromNote(TestingElement element) async {
           textColor: Colors.white,
           fontSize: 16.0
       );
+      element.isNoted = true;
     }
   }
 }
@@ -1090,17 +1038,19 @@ TestingElement getTestingElementFromObject(dynamic object) {
   return ret;
 }
 
-Future<void> reGet() async{
+Future<void> reGet({bool toast=true}) async{
   if (collectParameters.account == "") {
-    Fluttertoast.showToast(
-        msg: "Account not set",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
+    if (toast) {
+      Fluttertoast.showToast(
+          msg: "Account not set",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
     return;
   }
   var tags = collectParameters.limit.replaceAll("&", "^");
@@ -1113,15 +1063,17 @@ Future<void> reGet() async{
     "minLevel": "${collectParameters.levelRange[0]}",
     "maxLevel": "${collectParameters.levelRange[1]}",
   };
-  Fluttertoast.showToast(
-      msg: "Fetching data from server, please wait patiently.",
-      toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.CENTER,
-      timeInSecForIosWeb: 1,
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0
-  );
+  if (toast) {
+    Fluttertoast.showToast(
+        msg: "Fetching data from server, please wait patiently.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0
+    );
+  }
   var response = await http.get(Uri.http(baseHost, "", queryParameters));
   if (response.statusCode == 200) {
     var data = response.body;
@@ -1130,15 +1082,17 @@ Future<void> reGet() async{
 
     testingElements = [];
     if (jsonData["data"].isEmpty) {
-      Fluttertoast.showToast(
-          msg: "No data found. please change the parameters",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 3,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      if (toast) {
+        Fluttertoast.showToast(
+            msg: "No data found. please change the parameters",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 3,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+      }
       return;
     }
     for (var element in jsonData["data"]) {
@@ -1147,15 +1101,17 @@ Future<void> reGet() async{
 
     nowTestingElementIdx = jsonData["nowTestingIdx"];
     nowId = jsonData["id"];
-    Fluttertoast.showToast(
-        msg: "Start in Id: $nowId",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
+    if (toast) {
+      Fluttertoast.showToast(
+          msg: "Start in Id: $nowId",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
     mainTestArea.updateTestingElement();
   }
   else {
@@ -1187,8 +1143,8 @@ void initTTS() {
 String defaultAccount = "ali";
 var baseHost = "150.116.202.108:49";
 //var baseHost = "localhost:8000";
-final GlobalKey mainAreaKey = GlobalKey();
-final GlobalKey expandableMenuKey = GlobalKey();
+final GlobalKey mainAreaKey = GlobalKey<_FatherTestingAreaWidgetState>();
+final GlobalKey expandableMenuKey = GlobalKey<_ExpandableMenuWidgetState>();
 MainTestArea mainTestArea = MainTestArea();
 CollectParameters collectParameters = CollectParameters();
 List<String> relatedMethods = ["en_voc_def"];
@@ -1202,6 +1158,7 @@ bool isCreateAccount = false;
 HttpServer? server;
 FlutterTts? flutterTts;
 bool activateTTS = false;
+ThemeMode nowThemeMode = ThemeMode.dark;
 // tts state
 enum TtsState { playing, stopped, paused, continued }
 TtsState ttsState = TtsState.stopped;
