@@ -130,7 +130,7 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
     accountController.text = collectParameters.account;
     scopeController.text = collectParameters.limit;
     return Expandable(
-        backgroundColor: Theme.of(context).colorScheme.surfaceBright,
+        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
         firstChild: Text("Scope: ${collectParameters.getLimit()}"),
         subChild: const Text("change parameters"),
         secondChild: Padding(
@@ -586,7 +586,7 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                     )
                   ],
                 ),
-                const Divider(),
+                const Divider(thickness: 4,),
                 ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.28,

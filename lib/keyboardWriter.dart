@@ -67,7 +67,7 @@ class InputPageState extends State<InputPage> {
       appBar: AppBar(
         title: const Text('Input'),
       ),
-      backgroundColor: Theme.of(context).colorScheme.surfaceBright,
+      backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
       body: Column(
         children: <Widget>[
           Padding(

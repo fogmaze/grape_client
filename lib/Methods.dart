@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import "package:http/http.dart" as http;
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/widgets.dart';
@@ -18,6 +21,8 @@ class EnVocDef_TestingElement extends TestingElement {
   @override
   String methodName = "en_voc_def";
   int showNum = 0;
+  int exampleSentenceIdx = -1;
+  String exampleSentence = "click the definition to show";
   @override
   Widget getWidget() {
     return EnVocDef_TestingElementWidget(element: this);
@@ -66,31 +71,77 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
         height: MediaQuery.of(context).size.height * 0.55,
         child: Container(
           decoration: const BoxDecoration(),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    const Text("Tap to see the definition"),
-                    IconButton(
-                      icon: const Icon(Icons.volume_up),
-                      onPressed: () async {
-                          await widget.element.ttsInstance?.speak(widget.element.que);
-                      },
-                    ),
-                  ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Tap to see the definition"),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up),
+                    onPressed: () async {
+                        await widget.element.ttsInstance?.speak(widget.element.que);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              for (int i = 0; i < widget.element.showNum; i++)
+                InkWell(
+                  onTap: () {
+                    http.get(Uri.http(
+                        baseHost, "",
+                        {
+                          "type": "getSentence",
+                          "word": widget.element.que,
+                          "meaning": widget.element.defList![i]
+                        }
+                    )).then(
+                            (response) {
+                          setState(() {
+                            widget.element.exampleSentenceIdx = i;
+                            var jsonData = jsonDecode(response.body);
+                            if (jsonData["status"] == "success") {
+                              widget.element.exampleSentence = jsonData["sentence"];
+                            }
+                          });
+                        }
+                    );
+                  },
+                  child: Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
                 ),
-                const SizedBox(height: 10),
-                Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                for (int i = 0; i < widget.element.showNum; i++)
-                  Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
-                  const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ],
-            ),
+              for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
+                const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20,),
+              InkWell(
+                onTap: () {
+                  if (widget.element.exampleSentenceIdx == -1) {
+                    return;
+                  }
+                  http.get(Uri.http(
+                      baseHost, "",
+                      {
+                        "type": "RegenerateSentence",
+                        "word": widget.element.que,
+                        "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
+                      }
+                  )).then(
+                          (response) {
+                        setState(() {
+                          var jsonData = jsonDecode(response.body);
+                          if (jsonData["status"] == "success") {
+                            widget.element.exampleSentence = jsonData["sentence"];
+                          }
+                        });
+                      }
+                  );
+                },
+                child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 18,)),
+              ),
+            ],
           ),
         ),
       ),
@@ -115,7 +166,9 @@ class EnVocSpe_TestingElement extends TestingElement {
   bool isShowHint = false;
   String hint = "";
   bool isSpoken = false;
-
+  bool isAllExpanded = false;
+  int exampleSentenceIdx = -1;
+  String exampleSentence = "click the definition to show";
 
   @override
   Widget getWidget() {
@@ -128,6 +181,7 @@ class EnVocSpe_TestingElement extends TestingElement {
     left = 0;
     isShowHint = false;
     isSpoken = false;
+    isAllExpanded = false;
   }
 
   @override
@@ -138,6 +192,7 @@ class EnVocSpe_TestingElement extends TestingElement {
       flutterTts?.speak(que);
       isSpoken = true;
     }
+    isAllExpanded = true;
   }
 }
 
@@ -171,7 +226,45 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text("Spell it! click to see other definitions"),
-                Text(widget.element.defList!.sublist(0, widget.element.showNum).join("/") + "/..." * (widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children:[
+                    for (int i = 0; i < widget.element.showNum; i++)
+                      InkWell(
+                        onTap: () {
+                          if (!widget.element.isAllExpanded) {
+                            setState(() {
+                              widget.element.showNum++;
+                              if (widget.element.showNum > widget.element.defList!.length) {
+                                widget.element.showNum = 1;
+                              }
+                            });
+                            return;
+                          }
+                          http.get(Uri.http(
+                              baseHost, "",
+                              {
+                                "type": "getSentence",
+                                "word": widget.element.que,
+                                "meaning": widget.element.defList![i]
+                              }
+                          )).then(
+                                  (response) {
+                                setState(() {
+                                  widget.element.exampleSentenceIdx = i;
+                                  var jsonData = jsonDecode(response.body);
+                                  if (jsonData["status"] == "success") {
+                                    widget.element.exampleSentence = jsonData["sentence"];
+                                  }
+                                });
+                              }
+                          );
+                        },
+                        child: Text(i == 0?widget.element.defList![i]:"/${widget.element.defList![i]}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                      ),
+                    Text("/..."*(widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                  ],
+                )
               ],
             ),
           ),
@@ -219,6 +312,29 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             ),
           ),
         ),
+        if (widget.element.isAllExpanded)
+          InkWell(
+            onTap: () {
+              http.get(Uri.http(
+                  baseHost, "",
+                  {
+                    "type": "RegenerateSentence",
+                    "word": widget.element.que,
+                    "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
+                  }
+              )).then(
+                      (response) {
+                    setState(() {
+                      var jsonData = jsonDecode(response.body);
+                      if (jsonData["status"] == "success") {
+                        widget.element.exampleSentence = jsonData["sentence"];
+                      }
+                    });
+                  }
+              );
+            },
+            child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 18,)),
+          ),
       ],
     );
   }
