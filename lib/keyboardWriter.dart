@@ -16,9 +16,15 @@ class InputPage extends StatefulWidget {
 
 class InputPageState extends State<InputPage> {
 
-  final TextEditingController _controller = TextEditingController();
+  final _controller = TextEditingController();
+  final _tagController = TextEditingController(text: "mag");
   int maxLines = 2;
   String instruction = "input que";
+  bool isUsingDefFromAI = true;
+  String tags = "";
+  List<Matched> matched = [];
+  var matchedSelectedIdx = -1;
+  String state = "que";
 
   @override
   void dispose() {
@@ -72,10 +78,25 @@ class InputPageState extends State<InputPage> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              onChanged: (text) {
-                tags = text;
-              },
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _tagController,
+                    onChanged: (text) {
+                      tags = text;
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(isUsingDefFromAI?Icons.lightbulb:Icons.lightbulb_outline),
+                  onPressed: () {
+                    setState(() {
+                      isUsingDefFromAI = !isUsingDefFromAI;
+                    });
+                  },
+                )
+              ],
             )
           ),
           Padding(
@@ -146,15 +167,63 @@ class InputPageState extends State<InputPage> {
           if (matchedSelectedIdx != -1 ) {
             nowAddingQue = matched[matchedSelectedIdx].que!;
             _controller.text = matched[matchedSelectedIdx].ans!;
+            // request ai for def
+            if (isUsingDefFromAI) {
+              http.get(Uri.http(
+                  baseHost, "", {
+                "type": "getDefinition",
+                "word": nowAddingQue
+              }
+              )).then((response) {
+                setState(() {
+                  var jsonCode = jsonDecode(response.body);
+                  if (jsonCode["status"] == "success") {
+                    instruction += "(Ai says that : ${jsonCode["definition"]})";
+                  }
+                });
+              });
+            }
           }
           else if (matched.isNotEmpty?_controller.text.substring(0, _controller.text.length - 1) == matched[0].que:false) {
             nowAddingQue = matched[0].que!;
             _controller.text = matched[0].ans!;
+            // request ai for def
+            if (isUsingDefFromAI) {
+              http.get(Uri.http(
+                  baseHost, "", {
+                "type": "getDefinition",
+                "word": nowAddingQue
+              }
+              )).then((response) {
+                setState(() {
+                  var jsonCode = jsonDecode(response.body);
+                  if (jsonCode["status"] == "success") {
+                    instruction += "(Ai says that : ${jsonCode["definition"]})";
+                  }
+                });
+              });
+            }
           }
           else {
             nowAddingQue =
                 _controller.text.substring(0, _controller.text.length - 1);
             _controller.text = "";
+            // request ai for def
+            if (isUsingDefFromAI) {
+              http.get(Uri.http(
+                  baseHost, "", {
+                "type": "getDefinition",
+                "word": nowAddingQue
+              }
+              )).then((response) {
+                setState(() {
+                  var jsonCode = jsonDecode(response.body);
+                  if (jsonCode["status"] == "success") {
+                    _controller.text = jsonCode["definition"];
+                  }
+                });
+              });
+            }
           }
           instruction = "input ans for [$nowAddingQue]";
         }
@@ -162,6 +231,9 @@ class InputPageState extends State<InputPage> {
       else if (state == "ans") {
         if (_controller.text.contains("\n") && _controller.text.length > 1) {
           var resultStr = _controller.text.replaceAll("\n", "");
+          state = "que";
+          instruction = "input question";
+          _controller.text = "";
           http.get(
               Uri.http(baseHost, "", {
                 "type": "add",
@@ -176,13 +248,21 @@ class InputPageState extends State<InputPage> {
                       if (response.statusCode == 200) {
                         var jsonData = jsonDecode(response.body);
                         if (jsonData["status"] == "success") {
-                          state = "que";
-                          instruction = "input question";
-                          _controller.text = "";
                           Fluttertoast.showToast(
                               msg: "Added successfully",
                               toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.BOTTOM_LEFT,
+                              gravity: ToastGravity.TOP_RIGHT,
+                              timeInSecForIosWeb: 1,
+                              backgroundColor: Colors.black,
+                              textColor: Colors.white,
+                              fontSize: 16.0
+                          );
+                        }
+                        else {
+                          Fluttertoast.showToast(
+                              msg: "Failed to add $nowAddingQue",
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.TOP_RIGHT,
                               timeInSecForIosWeb: 1,
                               backgroundColor: Colors.black,
                               textColor: Colors.white,
@@ -214,10 +294,6 @@ class InputPageState extends State<InputPage> {
   }
 }
 
-String tags = "";
-List<Matched> matched = [];
-var matchedSelectedIdx = -1;
-String state = "que";
 
 class Matched {
   String? que;

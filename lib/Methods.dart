@@ -23,6 +23,7 @@ class EnVocDef_TestingElement extends TestingElement {
   int showNum = 0;
   int exampleSentenceIdx = -1;
   String exampleSentence = "click the definition to show";
+  bool sentenceRequestSent = false;
   @override
   Widget getWidget() {
     return EnVocDef_TestingElementWidget(element: this);
@@ -31,11 +32,33 @@ class EnVocDef_TestingElement extends TestingElement {
   @override
   void resetWidget() {
     showNum = 0;
+    exampleSentence = "click the definition to show";
+    exampleSentenceIdx = -1;
   }
 
   @override
   void expandAll() {
     showNum = defList!.length;
+    /*if (exampleSentenceIdx == -1 && !sentenceRequestSent) {
+      http.get(Uri.http(
+          baseHost, "",
+          {
+            "type": "getSentence",
+            "word": que,
+            "meaning": defList![0],
+          }
+      )).then(
+          (response) {
+            sentenceRequestSent = false;
+            exampleSentenceIdx = 0;
+            var jsonData = jsonDecode(response.body);
+            if (jsonData["status"] == "success") {
+              exampleSentence = jsonData["sentence"];
+            }
+          }
+      );
+      sentenceRequestSent = true;
+    }*/
   }
 
   @override
@@ -55,6 +78,26 @@ class EnVocDef_TestingElementWidget extends StatefulWidget {
 }
 
 class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWidget> {
+
+  void getSentence() {
+    http.get(Uri.http(
+        baseHost, "",
+        {
+          "type": "getSentence",
+          "word": widget.element.que,
+          "meaning": widget.element.defList![widget.element.exampleSentenceIdx],
+        }
+    )).then(
+            (response) {
+          setState(() {
+            var jsonData = jsonDecode(response.body);
+            if (jsonData["status"] == "success") {
+              widget.element.exampleSentence = jsonData["sentence"];
+            }
+          });
+        }
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -74,48 +117,42 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              activateTTS?Row(
                 children: [
-                  const Text("Tap to see the definition"),
-                  IconButton(
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: () async {
-                        await widget.element.ttsInstance?.speak(widget.element.que);
-                    },
+                  Expanded(
+                    child: Container(),
+                  ),
+                  Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Expanded( // speaker
+                    child: Container(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: const Icon(Icons.volume_up),
+                        onPressed: () async {
+                            await widget.element.ttsInstance?.speak(widget.element.que);
+                        },
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 10),
-              Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
+              ):Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               for (int i = 0; i < widget.element.showNum; i++)
                 InkWell(
                   onTap: () {
-                    http.get(Uri.http(
-                        baseHost, "",
-                        {
-                          "type": "getSentence",
-                          "word": widget.element.que,
-                          "meaning": widget.element.defList![i]
-                        }
-                    )).then(
-                            (response) {
-                          setState(() {
-                            widget.element.exampleSentenceIdx = i;
-                            var jsonData = jsonDecode(response.body);
-                            if (jsonData["status"] == "success") {
-                              widget.element.exampleSentence = jsonData["sentence"];
-                            }
-                          });
-                        }
-                    );
+                    widget.element.exampleSentenceIdx = i;
+                    getSentence();
                   },
-                  child: Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
+                  child: Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
-                const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20,),
+                InkWell(
+                  onTap: () {
+                    widget.element.exampleSentenceIdx = i;
+                    getSentence();
+                  },
+                  child: const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ),
+              const SizedBox(height: 10,),
               InkWell(
                 onTap: () {
                   if (widget.element.exampleSentenceIdx == -1) {
@@ -139,7 +176,7 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
                       }
                   );
                 },
-                child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 18,)),
+                child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
               ),
             ],
           ),
@@ -333,7 +370,7 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
                   }
               );
             },
-            child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 18,)),
+            child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
           ),
       ],
     );
