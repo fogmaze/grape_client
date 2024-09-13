@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'main.dart';
+import 'selectTagFromHistory.dart';
 import 'package:flutter/material.dart';
 
 class TagSelectPage extends StatefulWidget {
@@ -13,7 +16,6 @@ class TagSelectPage extends StatefulWidget {
 }
 
 class TagSelectPageState extends State<TagSelectPage> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +33,30 @@ class TagSelectPageState extends State<TagSelectPage> {
       body: Center(
         child: CustomScrollView(
           slivers: <Widget>[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+              sliver: SliverToBoxAdapter(
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      getFromHost({
+                        "type": "getRecordHistory",
+                        "account": collectParameters.account,
+                      }).then(
+                        (value) {
+                          var json = jsonDecode(value.body);
+                          if (json["status"] != "success") {
+                            return;
+                          }
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => HistoryTagSelectPage(data: json["data"])));
+                        }
+                      );
+                    });
+                  },
+                  child: const Text("From history"),
+                ),
+              ),
+            ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (BuildContext context, int index) {
@@ -52,14 +78,7 @@ class TagSelectPageState extends State<TagSelectPage> {
                       },
                       activeColor: Colors.blue
                     ),
-                  );/*ListTile(
-                    title: Text(widget.tags[index]),
-                    onTap: () {
-                      Navigator.pop(context);
-                      collectParameters.limit = widget.tags[index];
-                      expandableMenuKey.currentState!.setState(() { });
-                    },
-                  );*/
+                  );
                 },
                 childCount: widget.tags.length,
               ),
@@ -69,5 +88,4 @@ class TagSelectPageState extends State<TagSelectPage> {
       ),
     );
   }
-
 }

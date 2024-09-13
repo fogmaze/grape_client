@@ -50,7 +50,7 @@ class InputPageState extends State<InputPage> {
     for (var i = 0; i < 5; i++) {
       var text = "$i. no match";
       if (matched.length > i) {
-        text = "${matched[i].que} -> ${matched[i].ans}";
+        text = "[${matched[i].level}] ${matched[i].que} -> ${matched[i].ans}";
       }
       matchedView.add(
         Center(
@@ -150,6 +150,7 @@ class InputPageState extends State<InputPage> {
                         var matchedElement = Matched();
                         matchedElement.que = jsonData["data"][i][0];
                         matchedElement.ans = jsonData["data"][i][1];
+                        matchedElement.level = jsonData["data"][i][2];
                         matched.add(matchedElement);
                       }
                     }
@@ -298,4 +299,5 @@ class InputPageState extends State<InputPage> {
 class Matched {
   String? que;
   String? ans;
+  String? level;
 }

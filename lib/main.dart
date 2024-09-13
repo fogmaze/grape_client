@@ -380,6 +380,10 @@ class _ExpandableMenuWidgetState extends State<ExpandableMenuWidget> {
                           child: ElevatedButton(
                             onPressed: () {
                               setState(() {
+                                getFromHost({
+                                  "type": "resetSubNote",
+                                  "account": collectParameters.account
+                                });
                                 if (isTestingSubNote) {
                                   switchMainAndSub();
                                 }
@@ -563,6 +567,23 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                           width: 24,
                           height: 24,
                           child: Center(child: Text("${widget.element.level}", style: const TextStyle(color: Colors.white)))),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          if (!subNotedTestingElements.contains(widget.element)) {
+                            getFromHost({
+                              "type": "subNoteAdd",
+                              "method_name": widget.element.methodName,
+                              "method_time":widget.element.time.toString(),
+                              "account": collectParameters.account,
+                            });
+                            subNotedTestingElements.add(widget.element);
+                            widget.element.resetWidget();
+                          }
+                        });
+                      },
+                      icon: const Icon(Icons.book_outlined)
                     ),
                     IconButton(
                       onPressed: () {
@@ -754,6 +775,12 @@ class MainTestArea {
   void handleDragEndGesture(DragEndDetails details) {
     if (isMovingLeft() && !isTestingSubNote) {
       if (!subNotedTestingElements.contains(testingElements[nowTestingElementIdx])) {
+        getFromHost({
+          "type": "subNoteAdd",
+          "method_name": testingElements[nowTestingElementIdx].methodName,
+          "method_time": testingElements[nowTestingElementIdx].time.toString(),
+          "account": collectParameters.account,
+        });
         subNotedTestingElements.add(testingElements[nowTestingElementIdx]);
         testingElements[nowTestingElementIdx].resetWidget();
       }
@@ -788,6 +815,14 @@ class MainTestArea {
   }
 }
 
+Future<http.Response> getFromHost(Map<String, dynamic> queryParameters) async {
+  return http.get(Uri.http(baseHost, "", queryParameters));
+}
+
+Future<http.Response> postToHost(Map<String, dynamic> queryParameters, Object body) async {
+  return http.post(Uri.http(baseHost, "", queryParameters), body: jsonEncode(body));
+}
+
 void switchMainAndSub() {
   var temp = testingElements;
   testingElements = subNotedTestingElements;
@@ -800,13 +835,45 @@ void switchMainAndSub() {
 }
 
 void removeNowTesting() {
-  change2NextTestingElement();
-  if (nowTestingElementIdx == 0) {
-    testingElements.removeAt(testingElements.length-1);
+  Future<http.Response>? response;
+  bool isShuffled = false;
+  if (isTestingSubNote) {
+    // send remove request
+    response = getFromHost({
+      "type": "removeSubNoteIdx",
+      "idx": nowTestingElementIdx.toString(),
+      "account": collectParameters.account,
+    });
   }
-  else {
-    testingElements.removeAt(nowTestingElementIdx-1);
-    nowTestingElementIdx--;
+  testingElements.removeAt(nowTestingElementIdx);
+  // handle if reach the end of the testingElements
+  if (nowTestingElementIdx == testingElements.length) {
+    // shuffle the testing List
+    testingElements.shuffle(Random());
+    nowTestingElementIdx = 0;
+    for (var e in testingElements) {
+      e.resetWidget();
+    }
+    isShuffled = true;
+  }
+
+  // update layout
+  testingElements[nowTestingElementIdx].resetWidget();
+  if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
+    testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
+  }
+  mainTestArea.updateTestingElement();
+
+  // sync to server
+  if (isShuffled) {
+    if (isTestingSubNote) {
+      response!.then((value) {
+        updateTestingElementRecordToServer();
+      });
+    }
+    else {
+      updateTestingElementRecordToServer();
+    }
   }
 }
 
@@ -916,57 +983,73 @@ void change2PreviousTestingElement() {
 void change2NextTestingElement() {
   if (nowTestingElementIdx < testingElements.length - 1) {
     if (!isTestingSubNote) {
-      http.get(Uri.http(
-          baseHost, "",
-          {
-            "type": "update_rec",
-            "operation": "del",
-            "targetId": nowId.toString(),
-            "time": testingElements[nowTestingElementIdx].time.toString(),
-            "method_name": testingElements[nowTestingElementIdx].methodName,
-          }
-      ));
+      getFromHost({
+        "type": "update_rec",
+        "operation": "del",
+        "targetId": nowId.toString(),
+        "time": testingElements[nowTestingElementIdx].time.toString(),
+        "method_name": testingElements[nowTestingElementIdx].methodName,
+      });
     }
+
     testingElements[nowTestingElementIdx].nowRelatedElementIdx++;
-    if (testingElements[nowTestingElementIdx].nowRelatedElementIdx >= testingElements[nowTestingElementIdx].relatedElements.length) {
+    if (testingElements[nowTestingElementIdx].nowRelatedElementIdx >=
+        testingElements[nowTestingElementIdx].relatedElements.length) {
       testingElements[nowTestingElementIdx].nowRelatedElementIdx = 0;
     }
     nowTestingElementIdx++;
-  } else {
+
+    if (isTestingSubNote) {
+      getFromHost({
+        "type": "subNoteUpdateIdx",
+        "idx": nowTestingElementIdx.toString(),
+        "account": collectParameters.account,
+      });
+    }
+  }
+  else {
     // shuffle the testing List
     testingElements.shuffle(Random());
     nowTestingElementIdx = 0;
     for (var e in testingElements) {
       e.resetWidget();
     }
-    var methodNames = [];
-    var times = [];
-    for (var e in testingElements) {
-      methodNames.add(e.methodName);
-      times.add(e.time);
-    }
-    if (!isTestingSubNote) {
-      http.post(
-          Uri.http(
-              baseHost, "",
-              {
-                "type": "update_rec",
-                "operation": "reset",
-                "targetId": nowId.toString(),
-              }
-          ),
-          body: jsonEncode({
-            "method_names": methodNames,
-            "times": times,
-          })
-      );
-    }
+    updateTestingElementRecordToServer();
   }
+
   testingElements[nowTestingElementIdx].resetWidget();
   if (testingElements[nowTestingElementIdx].relatedElements.isNotEmpty) {
     testingElements[nowTestingElementIdx].relatedElements[testingElements[nowTestingElementIdx].nowRelatedElementIdx].resetWidget();
   }
   mainTestArea.updateTestingElement();
+}
+
+void updateTestingElementRecordToServer() {
+  var methodNames = [];
+  var times = [];
+  for (var e in testingElements) {
+    methodNames.add(e.methodName);
+    times.add(e.time);
+  }
+  if (!isTestingSubNote) {
+    postToHost({
+      "type": "update_rec",
+      "operation": "reset",
+      "targetId": nowId.toString(),
+    }, {
+      "method_names": methodNames,
+      "times": times,
+    });
+  }
+  else {
+    postToHost({
+      "type": "subNoteUpdate",
+      "account": collectParameters.account,
+    }, {
+      "method_names": methodNames,
+      "times": times,
+    });
+  }
 }
 
 Future<List<TestingElement>> getRelatedTestingElements(TestingElement element) async {
@@ -1097,6 +1180,13 @@ Future<void> reGet({bool toast=true}) async{
     }
     for (var element in jsonData["data"]) {
       testingElements.add(getTestingElementFromObject(element));
+    }
+    if (!jsonData["subData"].isEmpty) {
+      subNotedTestingElements = [];
+      for (var element in jsonData["subData"]) {
+        subNotedTestingElements.add(getTestingElementFromObject(element));
+      }
+      nowSubNoteIdx = jsonData["nowSubIdx"];
     }
 
     nowTestingElementIdx = jsonData["nowTestingIdx"];
