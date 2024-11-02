@@ -545,13 +545,24 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
         ),
         child: SizedBox(
           width: MediaQuery.of(context).size.width * 0.72,
-          height: MediaQuery.of(context).size.height * 0.39,
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
               children: [
-                Row( // TODO implement tool
+                Row(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                            color: Colors.deepOrange
+                        ),
+                        child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Center(child: Text("${widget.element.level}", style: const TextStyle(color: Colors.white)))),
+                      ),
+                    ),
                     Expanded(
                       child: FittedBox(
                         alignment: Alignment.centerLeft,
@@ -559,33 +570,32 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                         child: Text("from: ${widget.element.tags}", style: const TextStyle(fontSize: 16)),
                       ),
                     ),
-                    Container(
-                      decoration: const BoxDecoration(
-                          color: Colors.deepOrange
-                      ),
-                      child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Center(child: Text("${widget.element.level}", style: const TextStyle(color: Colors.white)))),
-                    ),
                     IconButton(
                       onPressed: () {
                         setState(() {
-                          if (!subNotedTestingElements.contains(widget.element)) {
+                          List<TestingElement>? target;
+                          if (isTestingSubNote) {
+                            target = testingElements;
+                          }
+                          else {
+                            target = subNotedTestingElements;
+                          }
+                          if (!target.contains(widget.element)) {
                             getFromHost({
                               "type": "subNoteAdd",
                               "method_name": widget.element.methodName,
                               "method_time":widget.element.time.toString(),
                               "account": collectParameters.account,
                             });
-                            subNotedTestingElements.add(widget.element);
-                            widget.element.resetWidget();
+                            target.add(widget.element);
                           }
                         });
+                        mainAreaKey.currentState?.setState(() {});
                       },
-                      icon: const Icon(Icons.book_outlined)
+                      icon: const Icon(Icons.book_outlined),
                     ),
                     IconButton(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
                       onPressed: () {
                         setState(() {
                           if (widget.element.methodName == "notes") {
@@ -608,12 +618,8 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                   ],
                 ),
                 const Divider(thickness: 4,),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.28,
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
-                  child: widget.element.getWidget()
+                Expanded(
+                  child: widget.element.getWidget(),
                 ),
               ],
             )
@@ -708,20 +714,33 @@ class _FatherTestingAreaWidgetState extends State<FatherTestingAreaWidget> {
                               .height * 0.87,
                           child: Column(
                             children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: MediaQuery
-                                        .of(context)
-                                        .size
-                                        .height * 0.018),
-                                child: mainTestArea.mainSingleTestingArea
-                                    .getWidget(),
+                              Expanded(
+                                child:Padding(
+                                  padding: EdgeInsets.only(
+                                      top: MediaQuery
+                                          .of(context)
+                                          .size
+                                          .height * 0.01,
+                                      bottom: MediaQuery
+                                          .of(context)
+                                          .size
+                                          .height * 0.01
+                                  ),
+                                  child: mainTestArea.mainSingleTestingArea
+                                      .getWidget(),
+                                ),
                               ),
-                              const Divider(),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: mainTestArea.relatedSingleTestingArea
-                                    .getWidget(),
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                      bottom: MediaQuery
+                                          .of(context)
+                                          .size
+                                          .height * 0.01
+                                  ),
+                                  child: mainTestArea.relatedSingleTestingArea
+                                      .getWidget(),
+                                ),
                               ),
                             ],
                           )
@@ -877,6 +896,101 @@ void removeNowTesting() {
   }
 }
 
+void addToSubNote(TestingElement e) {
+  if (!isTestingSubNote) {
+    if (!subNotedTestingElements.contains(e)) {
+      getFromHost({
+        "type": "subNoteAdd",
+        "method_name": e.methodName,
+        "method_time": e.time.toString(),
+        "account": collectParameters.account,
+      });
+      subNotedTestingElements.add(e);
+      mainTestArea.updateTestingElement();
+      Fluttertoast.showToast(
+          msg: "Added to subnote",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.black,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+  }
+  else {
+    if (!testingElements.contains(e)) {
+      getFromHost({
+        "type": "subNoteAdd",
+        "method_name": e.methodName,
+        "method_time": e.time.toString(),
+        "account": collectParameters.account,
+      });
+      testingElements.add(e);
+      mainTestArea.updateTestingElement();
+      Fluttertoast.showToast(
+          msg: "Added to testing",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.black,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+  }
+}
+
+void addToSubNoteFromTime(int time) async{
+  var response = await getFromHost({
+    "type": "getDetailFromTime",
+    "time": time.toString(),
+    "method_name": "en_voc_def",
+    "account": collectParameters.account,
+  });
+  if (response.statusCode == 200) {
+    var jsonData = jsonDecode(response.body);
+    if (jsonData["status"] == "success") {
+      var data = jsonData["data"];
+      var e = getTestingElementFromObject(data);
+      addToSubNote(e);
+    }
+  }
+}
+
+Future<void> takeNoteFromTime(int time, {methodName="en_voc_def"}) async {
+  var r = await getFromHost({
+    "type": "note",
+    "method_name": methodName,
+    "method_time": time.toString(),
+    "account": collectParameters.account,
+  });
+  if (r.statusCode == 200) {
+    var jsonData = jsonDecode(r.body);
+    if (jsonData["status"] == "success") {
+      Fluttertoast.showToast(
+          msg: "Note taken",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.black,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+    else {
+      Fluttertoast.showToast(
+          msg: "Note already taken",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM_LEFT,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+  }
+}
 
 Future<void> takeNote(TestingElement e) async {
   e.isNoted = true;

@@ -109,77 +109,82 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
           }
         });
       },
-      child: SizedBox(
+      child: Container(
+        decoration: const BoxDecoration(),
         width: MediaQuery.of(context).size.width * 0.7,
-        height: MediaQuery.of(context).size.height * 0.55,
-        child: Container(
-          decoration: const BoxDecoration(),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              activateTTS?Row(
-                children: [
-                  Expanded(
-                    child: Container(),
-                  ),
-                  Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Expanded( // speaker
-                    child: Container(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () async {
-                            await widget.element.ttsInstance?.speak(widget.element.que);
-                        },
-                      ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            activateTTS?Row(
+              children: [
+                Expanded(
+                  child: Container(),
+                ),
+                Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Expanded( // speaker
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.volume_up),
+                      onPressed: () async {
+                          await widget.element.ttsInstance?.speak(widget.element.que);
+                      },
                     ),
                   ),
-                ],
-              ):Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              for (int i = 0; i < widget.element.showNum; i++)
-                InkWell(
-                  onTap: () {
-                    widget.element.exampleSentenceIdx = i;
-                    getSentence();
-                  },
-                  child: Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
-              for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
-                InkWell(
-                  onTap: () {
-                    widget.element.exampleSentenceIdx = i;
-                    getSentence();
-                  },
-                  child: const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-              const SizedBox(height: 10,),
-              InkWell(
-                onTap: () {
-                  if (widget.element.exampleSentenceIdx == -1) {
-                    return;
-                  }
-                  http.get(Uri.http(
-                      baseHost, "",
-                      {
-                        "type": "RegenerateSentence",
-                        "word": widget.element.que,
-                        "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
-                      }
-                  )).then(
-                          (response) {
-                        setState(() {
-                          var jsonData = jsonDecode(response.body);
-                          if (jsonData["status"] == "success") {
-                            widget.element.exampleSentence = jsonData["sentence"];
-                          }
-                        });
-                      }
-                  );
-                },
-                child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
+              ],
+            ):Text(widget.element.que, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: Column(
+                  children: [
+                    for (int i = 0; i < widget.element.showNum; i++)
+                      InkWell(
+                        onTap: () {
+                          widget.element.exampleSentenceIdx = i;
+                          getSentence();
+                        },
+                        child: Text(widget.element.defList![i], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
+                    for (int i = widget.element.showNum; i < widget.element.defList!.length; i++)
+                      InkWell(
+                        onTap: () {
+                          widget.element.exampleSentenceIdx = i;
+                          getSentence();
+                        },
+                        child: const Text("...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
+                  ],
+                )
               ),
-            ],
-          ),
+            ),
+            InkWell(
+              onTap: () {
+                if (widget.element.exampleSentenceIdx == -1) {
+                  return;
+                }
+                http.get(Uri.http(
+                    baseHost, "",
+                    {
+                      "type": "RegenerateSentence",
+                      "word": widget.element.que,
+                      "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
+                    }
+                )).then(
+                        (response) {
+                      setState(() {
+                        var jsonData = jsonDecode(response.body);
+                        if (jsonData["status"] == "success") {
+                          widget.element.exampleSentence = jsonData["sentence"];
+                        }
+                      });
+                    }
+                );
+              },
+              child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
+            ),
+          ],
         ),
       ),
     );
@@ -263,44 +268,47 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text("Spell it! click to see other definitions"),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children:[
-                    for (int i = 0; i < widget.element.showNum; i++)
-                      InkWell(
-                        onTap: () {
-                          if (!widget.element.isAllExpanded) {
-                            setState(() {
-                              widget.element.showNum++;
-                              if (widget.element.showNum > widget.element.defList!.length) {
-                                widget.element.showNum = 1;
-                              }
-                            });
-                            return;
-                          }
-                          http.get(Uri.http(
-                              baseHost, "",
-                              {
-                                "type": "getSentence",
-                                "word": widget.element.que,
-                                "meaning": widget.element.defList![i]
-                              }
-                          )).then(
-                                  (response) {
-                                setState(() {
-                                  widget.element.exampleSentenceIdx = i;
-                                  var jsonData = jsonDecode(response.body);
-                                  if (jsonData["status"] == "success") {
-                                    widget.element.exampleSentence = jsonData["sentence"];
-                                  }
-                                });
-                              }
-                          );
-                        },
-                        child: Text(i == 0?widget.element.defList![i]:"/${widget.element.defList![i]}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
-                      ),
-                    Text("/..."*(widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children:[
+                      for (int i = 0; i < widget.element.showNum; i++)
+                        InkWell(
+                          onTap: () {
+                            if (!widget.element.isAllExpanded) {
+                              setState(() {
+                                widget.element.showNum++;
+                                if (widget.element.showNum > widget.element.defList!.length) {
+                                  widget.element.showNum = 1;
+                                }
+                              });
+                              return;
+                            }
+                            http.get(Uri.http(
+                                baseHost, "",
+                                {
+                                  "type": "getSentence",
+                                  "word": widget.element.que,
+                                  "meaning": widget.element.defList![i]
+                                }
+                            )).then(
+                                    (response) {
+                                  setState(() {
+                                    widget.element.exampleSentenceIdx = i;
+                                    var jsonData = jsonDecode(response.body);
+                                    if (jsonData["status"] == "success") {
+                                      widget.element.exampleSentence = jsonData["sentence"];
+                                    }
+                                  });
+                                }
+                            );
+                          },
+                          child: Text(i == 0?widget.element.defList![i]:"/${widget.element.defList![i]}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                        ),
+                      Text("/..."*(widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                    ],
+                  ),
                 )
               ],
             ),

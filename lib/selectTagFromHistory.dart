@@ -40,6 +40,7 @@ class HistoryTagSelectPageState extends State<HistoryTagSelectPage> {
                           }
                         }
                         Navigator.pop(context);
+                        Navigator.pop(context);
                         expandableMenuKey.currentState!.setState(() { });
                       },
                     ),
