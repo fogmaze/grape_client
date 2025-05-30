@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GSAT Pro',
+      title: 'learninglish | GSAT 15!!!',
       initialRoute: initialRoute,
       routes: {
         "/" : (context) => const MyHomePage(title: "Yeah", ),
@@ -535,6 +535,12 @@ class SingleTestingAreaWidget extends StatefulWidget {
 }
 
 class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
+  void addCurrentToSubNote({bool reverse=false}) {
+    setState(() {
+      addToSubNote(widget.element, reverse: reverse);
+    });
+    mainAreaKey.currentState?.setState(() {});
+  }
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -570,33 +576,20 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                         child: Text("from: ${widget.element.tags}", style: const TextStyle(fontSize: 16)),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          List<TestingElement>? target;
-                          if (isTestingSubNote) {
-                            target = testingElements;
-                          }
-                          else {
-                            target = subNotedTestingElements;
-                          }
-                          if (!target.contains(widget.element)) {
-                            getFromHost({
-                              "type": "subNoteAdd",
-                              "method_name": widget.element.methodName,
-                              "method_time":widget.element.time.toString(),
-                              "account": collectParameters.account,
-                            });
-                            target.add(widget.element);
-                          }
-                        });
-                        mainAreaKey.currentState?.setState(() {});
+                    GestureDetector(
+                      onTap: () {
+                        addCurrentToSubNote();
                       },
-                      icon: const Icon(Icons.book_outlined),
+                      onDoubleTap: () {
+                        addCurrentToSubNote(reverse: true);
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(2.0),
+                        child: Icon(Icons.book_outlined),
+                      ),
                     ),
-                    IconButton(
-                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                      onPressed: () {
+                    GestureDetector(
+                      onTap: () {
                         setState(() {
                           if (widget.element.methodName == "notes") {
                             removeFromNote(testingElements[nowTestingElementIdx]);
@@ -608,16 +601,24 @@ class _SingleTestingAreaWidgetState extends State<SingleTestingAreaWidget> {
                               removeFromNote(widget.element);
                             }
                             else {
-                              takeNote(widget.element);
+                              takeNote(widget.element).then(
+                                  (value) => setState(() { })
+                              );
                             }
                           }
                         });
                       },
-                      icon: Icon(widget.element.isNoted?Icons.star:Icons.star_border, color: widget.element.isNoted?Colors.orange:Colors.grey),
+                      onDoubleTap: () {
+                        takeNote(widget.element, reverse: true);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(2.0),
+                        child: Icon(widget.element.isNoted?Icons.star:Icons.star_border, color: widget.element.isNoted?Colors.orange:Colors.grey),
+                      ),
                     )
                   ],
                 ),
-                const Divider(thickness: 4,),
+                const Divider(thickness: 2,),
                 Expanded(
                   child: widget.element.getWidget(),
                 ),
@@ -793,16 +794,7 @@ class MainTestArea {
   }
   void handleDragEndGesture(DragEndDetails details) {
     if (isMovingLeft() && !isTestingSubNote) {
-      if (!subNotedTestingElements.contains(testingElements[nowTestingElementIdx])) {
-        getFromHost({
-          "type": "subNoteAdd",
-          "method_name": testingElements[nowTestingElementIdx].methodName,
-          "method_time": testingElements[nowTestingElementIdx].time.toString(),
-          "account": collectParameters.account,
-        });
-        subNotedTestingElements.add(testingElements[nowTestingElementIdx]);
-        testingElements[nowTestingElementIdx].resetWidget();
-      }
+      addToSubNote(testingElements[nowTestingElementIdx]);
       if (isMovingDown()) {
         takeNote(testingElements[nowTestingElementIdx]);
       }
@@ -832,6 +824,18 @@ class MainTestArea {
     posLeft = 0.1;
     posTop = 0.08;
   }
+}
+
+void showShortToast(String msg) {
+  Fluttertoast.showToast(
+      msg: msg,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM_LEFT,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.black,
+      textColor: Colors.white,
+      fontSize: 16.0
+  );
 }
 
 Future<http.Response> getFromHost(Map<String, dynamic> queryParameters) async {
@@ -896,49 +900,56 @@ void removeNowTesting() {
   }
 }
 
-void addToSubNote(TestingElement e) {
-  if (!isTestingSubNote) {
-    if (!subNotedTestingElements.contains(e)) {
-      getFromHost({
-        "type": "subNoteAdd",
-        "method_name": e.methodName,
-        "method_time": e.time.toString(),
-        "account": collectParameters.account,
-      });
-      subNotedTestingElements.add(e);
-      mainTestArea.updateTestingElement();
-      Fluttertoast.showToast(
-          msg: "Added to subnote",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+
+void addToSubNote(TestingElement element, {bool reverse = false}) async{
+  var e = element;
+  if (reverse) {
+    var targetMethodName = e.methodName;
+    if (e.methodName == "en_voc_def") {
+      targetMethodName = "en_voc_spe";
+    }
+    else if (e.methodName == "en_voc_spe") {
+      targetMethodName = "en_voc_def";
+    }
+    e = await requestTestingElementFromTime(e.time, methodName: targetMethodName);
+  }
+  List<TestingElement> targetList = isTestingSubNote ? testingElements : subNotedTestingElements;
+  bool isExist = false;
+  for (var ele in targetList) {
+    if (e.time == ele.time && e.methodName == ele.methodName) {
+      isExist = true;
+      showShortToast("Already added");
+      break;
     }
   }
-  else {
-    if (!testingElements.contains(e)) {
-      getFromHost({
-        "type": "subNoteAdd",
-        "method_name": e.methodName,
-        "method_time": e.time.toString(),
-        "account": collectParameters.account,
-      });
-      testingElements.add(e);
-      mainTestArea.updateTestingElement();
-      Fluttertoast.showToast(
-          msg: "Added to testing",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+  if (!isExist) {
+    getFromHost({
+      "type": "subNoteAdd",
+      "method_name": e.methodName,
+      "method_time": e.time.toString(),
+      "account": collectParameters.account,
+    });
+    targetList.add(e);
+    mainTestArea.updateTestingElement();
+    showShortToast("Added to subnote");
+  }
+}
+
+Future<TestingElement> requestTestingElementFromTime(int time, {methodName="en_voc_def"}) async {
+  var response = await getFromHost({
+    "type": "getDetailFromTime",
+    "time": time.toString(),
+    "method_name": methodName,
+    "account": collectParameters.account,
+  });
+  if (response.statusCode == 200) {
+    var jsonData = jsonDecode(response.body);
+    if (jsonData["status"] == "success") {
+      var data = jsonData["data"];
+      return getTestingElementFromObject(data);
     }
   }
+  return DefaultTestingElement(dataObject: null);
 }
 
 void addToSubNoteFromTime(int time) async{
@@ -968,39 +979,33 @@ Future<void> takeNoteFromTime(int time, {methodName="en_voc_def"}) async {
   if (r.statusCode == 200) {
     var jsonData = jsonDecode(r.body);
     if (jsonData["status"] == "success") {
-      Fluttertoast.showToast(
-          msg: "Note taken",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Note taken");
     }
     else {
-      Fluttertoast.showToast(
-          msg: "Note already taken",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Note already taken");
     }
   }
 }
 
-Future<void> takeNote(TestingElement e) async {
-  e.isNoted = true;
+Future<void> takeNote(TestingElement e, {bool reverse = false}) async {
   if (e.methodName == "notes") {
+    e as Notes_TestingElement;
+    takeNote(e.actualElement!, reverse: true);
     return ;
+  }
+  var targetMethodName = e.methodName;
+  if (reverse) {
+    if (e.methodName == "en_voc_def") {
+      targetMethodName = "en_voc_spe";
+    }
+    else if (e.methodName == "en_voc_spe") {
+      targetMethodName = "en_voc_def";
+    }
   }
   var response = await http.get(
     Uri.http(baseHost, "", {
       "type" : "note",
-      "method_name" : e.methodName,
+      "method_name" : targetMethodName,
       "method_time" : e.time.toString(),
       "account" : collectParameters.account,
     }
@@ -1011,28 +1016,14 @@ Future<void> takeNote(TestingElement e) async {
     // convert string to json
     var jsonData = jsonDecode(data);
     if (jsonData["status"] == "success") {
-      Fluttertoast.showToast(
-          msg: "Note taken",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
-      e.isNoted = true;
-      e.noteTime = jsonData["time"];
+      showShortToast("Note taken");
+      if (!reverse) {
+        e.isNoted = true;
+        e.noteTime = jsonData["time"];
+      }
     }
     else {
-      Fluttertoast.showToast(
-          msg: "Note already taken",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Note already taken");
     }
   }
 }
@@ -1049,28 +1040,12 @@ Future<void> removeFromNote(TestingElement element) async {
   if (response.statusCode == 200) {
     var jsonData = jsonDecode(response.body);
     if (jsonData["status"] == "success") {
-      Fluttertoast.showToast(
-          msg: "Note removed",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Note removed");
       element.isNoted = false;
       element.noteTime = 0;
     }
     else {
-      Fluttertoast.showToast(
-          msg: "Note removing failed",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM_LEFT,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.black,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Note removing failed");
       element.isNoted = true;
     }
   }
@@ -1184,30 +1159,14 @@ Future<List<TestingElement>> getRelatedTestingElements(TestingElement element) a
 Future<int> initLoading() async {
   List<Map<String, dynamic>> matchedId = [{'id': 0}];
   if (matchedId.isEmpty) {
-    Fluttertoast.showToast(
-        msg: "No previous record found",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
+    showShortToast("No previous record found");
     await reGet();
     int? id = 0;
     return id;
   }
   else {
     int id = matchedId[0]['id'];
-    Fluttertoast.showToast(
-        msg: "Previous record found with id: $id",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
-    );
+    showShortToast("Previous record found with id: $id");
   }
   return 0;
 }
@@ -1238,15 +1197,7 @@ TestingElement getTestingElementFromObject(dynamic object) {
 Future<void> reGet({bool toast=true}) async{
   if (collectParameters.account == "") {
     if (toast) {
-      Fluttertoast.showToast(
-          msg: "Account not set",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0
-      );
+      showShortToast("Account not set");
     }
     return;
   }

@@ -16,7 +16,6 @@ class EnVocDef_TestingElement extends TestingElement {
   void init() {
     initialUpdate();
     defList = ans.split("|");
-    defList!.shuffle(Random());
   }
   @override
   String methodName = "en_voc_def";
@@ -79,6 +78,29 @@ class EnVocDef_TestingElementWidget extends StatefulWidget {
 
 class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWidget> {
 
+  void regenerateSentence({smart = false}) {
+    if (widget.element.exampleSentenceIdx == -1) {
+      return;
+    }
+    http.get(Uri.http(
+        baseHost, "",
+        {
+          "type": "RegenerateSentence",
+          "word": widget.element.que,
+          "meaning": widget.element.defList![widget.element.exampleSentenceIdx],
+          "smart": smart.toString()
+        }
+    )).then(
+            (response) {
+          setState(() {
+            var jsonData = jsonDecode(response.body);
+            if (jsonData["status"] == "success") {
+              widget.element.exampleSentence = jsonData["sentence"];
+            }
+          });
+        }
+    );
+  }
   void getSentence() {
     http.get(Uri.http(
         baseHost, "",
@@ -161,26 +183,10 @@ class EnVocDef_TestingElementWidgetState extends State<EnVocDef_TestingElementWi
             ),
             InkWell(
               onTap: () {
-                if (widget.element.exampleSentenceIdx == -1) {
-                  return;
-                }
-                http.get(Uri.http(
-                    baseHost, "",
-                    {
-                      "type": "RegenerateSentence",
-                      "word": widget.element.que,
-                      "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
-                    }
-                )).then(
-                        (response) {
-                      setState(() {
-                        var jsonData = jsonDecode(response.body);
-                        if (jsonData["status"] == "success") {
-                          widget.element.exampleSentence = jsonData["sentence"];
-                        }
-                      });
-                    }
-                );
+                regenerateSentence(smart: false);
+              },
+              onDoubleTap: () {
+                regenerateSentence(smart: true);
               },
               child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
             ),
@@ -200,7 +206,6 @@ class EnVocSpe_TestingElement extends TestingElement {
   void init() {
     initialUpdate();
     defList = ans.split("|");
-    defList!.shuffle(Random());
     hint = getHint(que);
   }
   int showNum = 1;
@@ -247,6 +252,27 @@ class EnVocSpe_TestingElementWidget extends StatefulWidget {
 
 
 class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWidget> {
+  void regenerateSentence({smart = false}) {
+    http.get(Uri.http(
+        baseHost, "",
+        {
+          "type": "RegenerateSentence",
+          "word": widget.element.que,
+          "meaning": widget.element.defList![widget.element.exampleSentenceIdx],
+          "smart": smart.toString()
+        }
+    )).then(
+            (response) {
+          setState(() {
+            var jsonData = jsonDecode(response.body);
+            if (jsonData["status"] == "success") {
+              widget.element.exampleSentence = jsonData["sentence"];
+            }
+          });
+        }
+    );
+;
+  }
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -267,47 +293,51 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Spell it! click to see other definitions"),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children:[
-                      for (int i = 0; i < widget.element.showNum; i++)
-                        InkWell(
-                          onTap: () {
-                            if (!widget.element.isAllExpanded) {
-                              setState(() {
-                                widget.element.showNum++;
-                                if (widget.element.showNum > widget.element.defList!.length) {
-                                  widget.element.showNum = 1;
-                                }
-                              });
-                              return;
-                            }
-                            http.get(Uri.http(
-                                baseHost, "",
-                                {
-                                  "type": "getSentence",
-                                  "word": widget.element.que,
-                                  "meaning": widget.element.defList![i]
-                                }
-                            )).then(
-                                    (response) {
-                                  setState(() {
-                                    widget.element.exampleSentenceIdx = i;
-                                    var jsonData = jsonDecode(response.body);
-                                    if (jsonData["status"] == "success") {
-                                      widget.element.exampleSentence = jsonData["sentence"];
-                                    }
-                                  });
-                                }
-                            );
-                          },
-                          child: Text(i == 0?widget.element.defList![i]:"/${widget.element.defList![i]}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
-                        ),
-                      Text("/..."*(widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
-                    ],
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.18,
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Wrap(
+                      direction: Axis.horizontal,
+                      children:[
+                        for (int i = 0; i < widget.element.showNum; i++)
+                          InkWell(
+                            onTap: () {
+                              if (!widget.element.isAllExpanded) {
+                                setState(() {
+                                  widget.element.showNum++;
+                                  if (widget.element.showNum > widget.element.defList!.length) {
+                                    widget.element.showNum = 1;
+                                  }
+                                });
+                                return;
+                              }
+                              http.get(Uri.http(
+                                  baseHost, "",
+                                  {
+                                    "type": "getSentence",
+                                    "word": widget.element.que,
+                                    "meaning": widget.element.defList![i]
+                                  }
+                              )).then(
+                                      (response) {
+                                    setState(() {
+                                      widget.element.exampleSentenceIdx = i;
+                                      var jsonData = jsonDecode(response.body);
+                                      if (jsonData["status"] == "success") {
+                                        widget.element.exampleSentence = jsonData["sentence"];
+                                      }
+                                    });
+                                  }
+                              );
+                            },
+                            child: Text(i == 0?widget.element.defList![i]:"/${widget.element.defList![i]}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                          ),
+                        Text("/..."*(widget.element.defList!.length - widget.element.showNum), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+                      ],
+                    ),
                   ),
                 )
               ],
@@ -360,23 +390,10 @@ class EnVocSpe_TestingElementWidgetState extends State<EnVocSpe_TestingElementWi
         if (widget.element.isAllExpanded)
           InkWell(
             onTap: () {
-              http.get(Uri.http(
-                  baseHost, "",
-                  {
-                    "type": "RegenerateSentence",
-                    "word": widget.element.que,
-                    "meaning": widget.element.defList![widget.element.exampleSentenceIdx]
-                  }
-              )).then(
-                      (response) {
-                    setState(() {
-                      var jsonData = jsonDecode(response.body);
-                      if (jsonData["status"] == "success") {
-                        widget.element.exampleSentence = jsonData["sentence"];
-                      }
-                    });
-                  }
-              );
+              regenerateSentence(smart: false);
+            },
+            onDoubleTap: () {
+              regenerateSentence(smart: true);
             },
             child: Text("EX: ${widget.element.exampleSentence}", style: const TextStyle(fontSize: 16,)),
           ),

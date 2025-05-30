@@ -59,13 +59,20 @@ class InputPageState extends State<InputPage> {
         Center(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(0, 0, 0, 1),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.95,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black),
-                color: i == matchedSelectedIdx ? Theme.of(context).colorScheme.onPrimaryFixedVariant: Theme.of(context).colorScheme.onSecondary,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  handleMatchedClick(i);
+                });
+              },
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.95,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                  color: i == matchedSelectedIdx ? Theme.of(context).colorScheme.onPrimaryFixedVariant: Theme.of(context).colorScheme.onSecondary,
+                ),
+                child: Text(text, style: const TextStyle(fontSize: 20)),
               ),
-              child: Text(text, style: const TextStyle(fontSize: 20)),
             ),
           ),
         )
@@ -189,7 +196,12 @@ class InputPageState extends State<InputPage> {
               ],
             ),
           ),
-        ] + matchedView,
+          Expanded(
+            child: ListView(
+              children: matchedView,
+            ),
+          ),
+        ]
       )
     );
   }
@@ -231,99 +243,128 @@ class InputPageState extends State<InputPage> {
       lastPhrIdx += 1;
     }
   }
-
+  void requestAiDef() {
+    http.get(Uri.http(
+        baseHost, "", {
+      "type": "getDefinition",
+      "word": nowAddingQue
+    }
+    )).then((response) {
+      setState(() {
+        var jsonCode = jsonDecode(response.body);
+        if (jsonCode["status"] == "success") {
+          var defStr = jsonCode["definition"];
+          aiDef = defStr.split("|");
+          aiDefIdx = 0;
+          lastPhrIdx = 0;
+          lastPhr = [];
+          for (dynamic d in jsonCode["phrases"]) {
+            lastPhr.add([d[0], d[1]]);
+          }
+          finishPhraseSearching();
+        }
+      });
+    });
+  }
+  void handleMatchedClick(int idx) {
+    if (matched.length <= idx) {
+      return;
+    }
+    matchedSelectedIdx = idx;
+    nowAddingQue = matched[idx].que!;
+    state = "ans";
+    instruction = "input ans for [$nowAddingQue]";
+    aiDef = [];
+    aiDefIdx = 0;
+    lastPhrIdx += 1;
+    _controller.text = matched[idx].ans!;
+    requestAiDef();
+  }
+  void handleSearchResponse(http.Response response) {
+    if (response.statusCode == 200) {
+      setState(() {
+        var jsonData = jsonDecode(response.body);
+        if (jsonData["status"] == "success") {
+          nowInputLevel = jsonData["level"];
+          matched = [];
+          for (var i = 0; i < jsonData["data"].length; i++) {
+            var matchedElement = Matched();
+            matchedElement.que = jsonData["data"][i][0];
+            matchedElement.ans = jsonData["data"][i][1];
+            matchedElement.level = jsonData["data"][i][2];
+            matchedElement.time = jsonData["data"][i][3];
+            matched.add(matchedElement);
+          }
+          for (int i = 0; i < matched.length; i++) {
+            if (_controller.text == matched[i].que) {
+              setState(() {
+                matchedSelectedIdx = i;
+              });
+              break;
+            }
+          }
+        }
+        else if (jsonData["status"] == "same") {
+          nowInputLevel = jsonData["level"];
+        }
+        else if (jsonData["status"] == "fail") {
+          matched = [];
+        }
+      });
+    }
+  }
   var nowAddingQue = "";
   void controllerCallback() {
     setState(() {
       if (state == "que") {
-        matchedSelectedIdx = -1;
-        for (var i = 0; i < _controller.text.length; i++) {
-          if (_controller.text[i] == "*" || _controller.text[i] == "Q") {
-            matchedSelectedIdx += 1;
-          }
-        }
-        if (matchedSelectedIdx > MAX_SEARCH-1) {
-          matchedSelectedIdx = -1;
-        }
-        else if (_controller.text.isNotEmpty && matchedSelectedIdx == -1) {
-          http.get(
-              Uri.http(baseHost, "", {
-                "type": "search",
-                "que": _controller.text
-              })
-          ).then(
-                  (response) {
-                if (response.statusCode == 200) {
-                  setState(() {
-                    var jsonData = jsonDecode(response.body);
-                    if (jsonData["status"] == "success") {
-                      nowInputLevel = jsonData["level"];
-                      matched = [];
-                      for (var i = 0; i < jsonData["data"].length; i++) {
-                        var matchedElement = Matched();
-                        matchedElement.que = jsonData["data"][i][0];
-                        matchedElement.ans = jsonData["data"][i][1];
-                        matchedElement.level = jsonData["data"][i][2];
-                        matchedElement.time = jsonData["data"][i][3];
-                        matched.add(matchedElement);
-                      }
-                    }
-                    else if (jsonData["status"] == "same") {
-                      nowInputLevel = jsonData["level"];
-                    }
-                    else if (jsonData["status"] == "fail") {
-                      matched = [];
-                    }
-                  });
-                }
-              }
-          );
-        }
-        handlePhrKBSelect();
-
         //switch to ans
         if (_controller.text.contains("\n")) {
+          var resultStr = _controller.text.replaceAll("\n", "");
           state = "ans";
           if (matchedSelectedIdx != -1 ) {
             nowAddingQue = matched[matchedSelectedIdx].que!;
             _controller.text = matched[matchedSelectedIdx].ans!;
           }
-          else if (matched.isNotEmpty?_controller.text.substring(0, _controller.text.length - 1) == matched[0].que:false) {
+          else if (matched.isNotEmpty?resultStr == matched[0].que:false) {
             nowAddingQue = matched[0].que!;
             _controller.text = matched[0].ans!;
           }
           else {
-            nowAddingQue =
-                _controller.text.substring(0, _controller.text.length - 1);
+            nowAddingQue = resultStr;
             _controller.text = "";
           }
           instruction = "input ans for [$nowAddingQue]";
-          // get definition from AI
           if (isUsingDefFromAI) {
-            http.get(Uri.http(
-                baseHost, "", {
-              "type": "getDefinition",
-              "word": nowAddingQue
-            }
-            )).then((response) {
-              setState(() {
-                var jsonCode = jsonDecode(response.body);
-                if (jsonCode["status"] == "success") {
-                  var defStr = jsonCode["definition"];
-                  aiDef = defStr.split("|");
-                  aiDefIdx = 0;
-
-                  lastPhrIdx = 0;
-                  lastPhr = [];
-                  for (dynamic d in jsonCode["phrases"]) {
-                    lastPhr.add([d[0], d[1]]);
-                  }
-                  finishPhraseSearching();
-                }
-              });
-            });
+            requestAiDef();
           }
-
+        }
+        else {
+          matchedSelectedIdx = -1;
+          for (var i = 0; i < _controller.text.length; i++) {
+            if (_controller.text[i] == "*" || _controller.text[i] == "Q") {
+              matchedSelectedIdx += 1;
+            }
+          }
+          if (matchedSelectedIdx > MAX_SEARCH-1) {
+            matchedSelectedIdx = -1;
+          }
+          else if (_controller.text.isNotEmpty && matchedSelectedIdx == -1) {
+            http.get(
+                Uri.http(baseHost, "", {
+                  "type": "search",
+                  "que": _controller.text
+                })
+            ).then(handleSearchResponse);
+          }
+          handlePhrKBSelect();
+          for (int i = 0; i < matched.length; i++) {
+            if (_controller.text.trim() == matched[i].que?.trim()) {
+              setState(() {
+                matchedSelectedIdx = i;
+              });
+              break;
+            }
+          }
         }
       }
       else if (state == "ans") {
@@ -346,26 +387,10 @@ class InputPageState extends State<InputPage> {
                       if (response.statusCode == 200) {
                         var jsonData = jsonDecode(response.body);
                         if (jsonData["status"] == "success") {
-                          Fluttertoast.showToast(
-                              msg: "Added successfully",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.TOP_RIGHT,
-                              timeInSecForIosWeb: 1,
-                              backgroundColor: Colors.black,
-                              textColor: Colors.white,
-                              fontSize: 16.0
-                          );
+                          showShortToast("Added successfully");
                         }
                         else {
-                          Fluttertoast.showToast(
-                              msg: "Failed to add $nowAddingQue",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.TOP_RIGHT,
-                              timeInSecForIosWeb: 1,
-                              backgroundColor: Colors.black,
-                              textColor: Colors.white,
-                              fontSize: 16.0
-                          );
+                          showShortToast("Failed to add $nowAddingQue");
                         }
                       }
                     });
@@ -376,15 +401,7 @@ class InputPageState extends State<InputPage> {
           state = "que";
           instruction = "input question";
           _controller.text = "";
-          Fluttertoast.showToast(
-              msg: "Answer is empty",
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.BOTTOM_LEFT,
-              timeInSecForIosWeb: 1,
-              backgroundColor: Colors.black,
-              textColor: Colors.white,
-              fontSize: 16.0
-          );
+          showShortToast("Answer is empty");
         }
         else if (_controller.text.contains("{")) {
           var t = _controller.text.replaceAll("{", "");
@@ -401,14 +418,6 @@ class InputPageState extends State<InputPage> {
           var t = _controller.text.replaceAll("}", "");
           _controller.text = t;
           aiDefIdx += 1;
-        }
-      }
-      for (int i = 0; i < matched.length; i++) {
-        if (_controller.text == matched[i].que) {
-          setState(() {
-            matchedSelectedIdx = i;
-          });
-          break;
         }
       }
     });
